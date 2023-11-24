@@ -134,13 +134,6 @@ public class WorkspaceTests
     [TestMethod]
     public async Task TestGetCommitTimesFromEdi()
     {
-        // Ignore on Windows:
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // TODO: Support Windows
-            return;
-        }
-        
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
             CloneMode.Full);

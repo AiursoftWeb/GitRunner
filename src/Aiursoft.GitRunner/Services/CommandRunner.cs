@@ -3,6 +3,7 @@ using Aiursoft.Scanner.Abstractions;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace Aiursoft.GitRunner.Services;
 
@@ -58,6 +59,13 @@ public class CommandRunner : ITransientDependency
                 path);
         }
 
+        var outputBuilder = new StringBuilder();
+        while (!process.StandardOutput.EndOfStream)
+        {
+            var line = await process.StandardOutput.ReadLineAsync();
+            outputBuilder.AppendLine(line);
+        }
+
         var executeTask = process.WaitForExitAsync();
         await Task.WhenAny(Task.Delay(timeout.Value), executeTask);
         if (!executeTask.IsCompleted)
@@ -68,7 +76,7 @@ public class CommandRunner : ITransientDependency
         if (!integrateResultInProcess) return string.Empty;
 
         var consoleOutput = string.Empty;
-        var output = await process.StandardOutput.ReadToEndAsync();
+        var output = outputBuilder.ToString();
         var error = await process.StandardError.ReadToEndAsync();
         if (
             output.Contains("'git-lfs' was not found") ||
