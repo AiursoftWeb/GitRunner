@@ -1,4 +1,5 @@
 ﻿using Aiursoft.GitRunner.Models;
+using Aiursoft.GitRunner.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -137,5 +138,20 @@ public class WorkspaceTests
             CloneMode.OnlyCommits);
         var remote = await workspaceManager.GetRemoteUrl(_tempPath!);
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/gitrunner.git", remote);
+    }
+    
+    [TestMethod]
+    public async Task TestResetRepoTwoTimes()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        var commandService = _serviceProvider!.GetRequiredService<CommandRunner>();
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.Depth1);
+        Assert.IsTrue(Directory.Exists(_tempPath));
+
+        await commandService.RunGit(_tempPath!, "remote remove origin");
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.Depth1);
+        Assert.IsTrue(Directory.Exists(_tempPath));
     }
 }

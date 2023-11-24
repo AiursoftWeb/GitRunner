@@ -93,6 +93,12 @@ public class WorkspaceManager : ITransientDependency
     public async Task<string> GetRemoteUrl(string path)
     {
         var gitRemoteOutput = await _commandRunner.RunGit(path, "remote -v");
+        
+        if (string.IsNullOrWhiteSpace(gitRemoteOutput))
+        {
+            return string.Empty;
+        }
+        
         return gitRemoteOutput
             .Split('\n')
             .First(t => t.StartsWith("origin"))
