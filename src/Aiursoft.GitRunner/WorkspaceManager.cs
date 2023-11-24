@@ -110,22 +110,18 @@ public class WorkspaceManager : ITransientDependency
     /// <param name="endPoint">Endpoint. Used for Git clone.</param>
     /// <param name="cloneMode">Clone mode</param>
     /// <returns>Task</returns>
-    public async Task Clone(string path, string branch, string endPoint, CloneMode cloneMode)
+    public async Task Clone(string path, string? branch, string endPoint, CloneMode cloneMode)
     {
         string? command;
-        switch(cloneMode)
+        var branchArg = string.IsNullOrWhiteSpace(branch) ? string.Empty : $"-b {branch}";
+        command = cloneMode switch
         {
-            case CloneMode.Full:
-                command = $"clone -b {branch} {endPoint} .";break;
-            case CloneMode.OnlyCommits:
-                command = $"clone --filter=tree:0 -b {branch} {endPoint} ."; break;
-            case CloneMode.CommitsAndTrees:
-                command = $"clone --filter=blob:none -b {branch} {endPoint} ."; break;
-            case CloneMode.Depth1:
-                command = $"clone --depth=1 -b {branch} {endPoint} ."; break;
-            default:
-                throw new NotSupportedException($"Clone mode {cloneMode} is not supported.");
-        }
+            CloneMode.Full => $"clone {branchArg} {endPoint} .",
+            CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {endPoint} .",
+            CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {endPoint} .",
+            CloneMode.Depth1 => $"clone --depth=1 {branchArg} {endPoint} .",
+            _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
+        };
 
         await _commandRunner.RunGit(path, command);
     }
@@ -140,7 +136,7 @@ public class WorkspaceManager : ITransientDependency
     /// <param name="endPoint">Git clone endpoint.</param>
     /// <param name="cloneMode">Clone mode</param>
     /// <returns>Task</returns>
-    public async Task ResetRepo(string path, string branch, string endPoint, CloneMode cloneMode)
+    public async Task ResetRepo(string path, string? branch, string endPoint, CloneMode cloneMode)
     {
         try
         {
@@ -152,9 +148,19 @@ public class WorkspaceManager : ITransientDependency
 
             await _commandRunner.RunGit(path, "reset --hard HEAD");
             await _commandRunner.RunGit(path, "clean . -fdx");
-            await SwitchToBranch(path, branch, false);
+            if (!string.IsNullOrWhiteSpace(branch))
+            {
+                await SwitchToBranch(path, branch, false);
+            }
             await Fetch(path);
-            await _commandRunner.RunGit(path, $"reset --hard origin/{branch}");
+            if (!string.IsNullOrWhiteSpace(branch))
+            {
+                await _commandRunner.RunGit(path, $"reset --hard origin/{branch}");
+            }
+            else
+            {
+                await _commandRunner.RunGit(path, $"reset --hard origin/HEAD");                
+            }
         }
         catch (GitCommandException e) when (
             e.Message.Contains("not a git repository") ||

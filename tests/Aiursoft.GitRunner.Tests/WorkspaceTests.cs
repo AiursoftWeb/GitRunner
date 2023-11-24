@@ -8,7 +8,7 @@ namespace Aiursoft.GitRunner.Tests;
 public class WorkspaceTests
 {
     private IServiceProvider? _serviceProvider;
-    private string? tempPath;
+    private string? _tempPath;
 
     [TestInitialize]
     public void Init()
@@ -17,20 +17,20 @@ public class WorkspaceTests
             .AddLogging()
             .AddGitRunner()
             .BuildServiceProvider();
-        tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempPath);
+        _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(_tempPath);
     }
 
     [TestCleanup]
     public void Clean()
     {
         // Delete the tempPath
-        if (Directory.Exists(tempPath))
+        if (Directory.Exists(_tempPath))
         {
             // Delete it, suppress error
             try
             {
-                Directory.Delete(tempPath, true);
+                Directory.Delete(_tempPath, true);
             }
             catch
             {
@@ -48,29 +48,50 @@ public class WorkspaceTests
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.Clone(
-            tempPath!, 
+            _tempPath!, 
             "master", 
             "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             mode);
-        Assert.IsTrue(Directory.Exists(tempPath));
+        Assert.IsTrue(Directory.Exists(_tempPath));
+    }
+    
+    [TestMethod]
+    public async Task TestCloneDefaultBranch()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.Clone(
+            _tempPath!, 
+            null, 
+            "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.Depth1);
+        Assert.IsTrue(Directory.Exists(_tempPath));
     }
     
     [TestMethod]
     public async Task TestReset()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
-        Assert.IsTrue(Directory.Exists(tempPath));
+        Assert.IsTrue(Directory.Exists(_tempPath));
+    }
+    
+    [TestMethod]
+    public async Task TestResetDefaultBranch()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.Depth1);
+        Assert.IsTrue(Directory.Exists(_tempPath));
     }
     
     [TestMethod]
     public async Task TestGetBranch()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
-        var branch = await workspaceManager.GetBranch(tempPath!);
+        var branch = await workspaceManager.GetBranch(_tempPath!);
         Assert.AreEqual("master", branch);
     }
     
@@ -78,9 +99,9 @@ public class WorkspaceTests
     public async Task TestGetRemoteUrl()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
-        var remote = await workspaceManager.GetRemoteUrl(tempPath!);
+        var remote = await workspaceManager.GetRemoteUrl(_tempPath!);
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/gitrunner.git", remote);
     }
     
@@ -88,9 +109,9 @@ public class WorkspaceTests
     public async Task TestGetCommitTimes()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.OnlyCommits);
-        var commits = await workspaceManager.GetCommitTimes(tempPath!);
+        var commits = await workspaceManager.GetCommitTimes(_tempPath!);
         Assert.IsTrue(commits.Length > 8);
         Assert.IsTrue(commits[0] > commits[1]);
     }
