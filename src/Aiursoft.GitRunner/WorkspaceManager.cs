@@ -97,8 +97,8 @@ public class WorkspaceManager : ITransientDependency
             .Split('\n')
             .First(t => t.StartsWith("origin"))
             .Substring(6)
-            .Replace("(fetch)", string.Empty)
-            .Replace("(push)", string.Empty)
+            .Split(' ')
+            .First()
             .Trim();
     }
 
