@@ -112,14 +112,14 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Task</returns>
     public async Task Clone(string path, string? branch, string endPoint, CloneMode cloneMode)
     {
-        string? command;
         var branchArg = string.IsNullOrWhiteSpace(branch) ? string.Empty : $"-b {branch}";
-        command = cloneMode switch
+        var command = cloneMode switch
         {
             CloneMode.Full => $"clone {branchArg} {endPoint} .",
             CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {endPoint} .",
             CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {endPoint} .",
             CloneMode.Depth1 => $"clone --depth=1 {branchArg} {endPoint} .",
+            CloneMode.Bare => $"clone --bare {branchArg} {endPoint} .",
             _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
         };
 
