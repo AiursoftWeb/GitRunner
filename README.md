@@ -16,6 +16,29 @@ To install `Aiursoft.GitRunner` to your project from [nuget.org](https://www.nug
 dotnet add package Aiursoft.GitRunner
 ```
 
+## How to use
+
+You can use this tool to Clone\Push\Commit git repositories.
+
+```csharp
+var serviceProvider = new ServiceCollection()
+    .AddLogging()
+    .AddGitRunner()
+    .BuildServiceProvider();
+var repoPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+Directory.CreateDirectory(repoPath);
+
+var workspaceManager = serviceProvider.GetRequiredService<WorkspaceManager>();
+await workspaceManager.Clone(
+    repoPath, 
+    "master", 
+    "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+    mode);
+
+var branch = await workspaceManager.GetBranch(repoPath); // master
+var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://gitlab.aiursoft.cn/aiursoft/gitrunner.git
+```
+
 ## How to contribute
 
 There are many ways to contribute to the project: logging bugs, submitting pull requests, reporting issues, and creating suggestions.
