@@ -40,6 +40,28 @@ public class WorkspaceManager : ITransientDependency
             .Trim();
     }
 
+    /// <summary>
+    /// Get all commit times from a git repo. Response array is descending.
+    /// </summary>
+    /// <param name="path">Path</param>
+    /// <returns>Datetime array</returns>
+    public async Task<DateTime[]> GetCommitTimes(string path)
+    {
+        var times = new List<DateTime>();
+        var gitCommitsOutput = await _commandRunner.RunGit(path, "--no-pager log --format=%at");
+        var lines = gitCommitsOutput.Split('\n');
+        foreach (var commitTime in lines)
+        {
+            if (long.TryParse(commitTime, out var unixTime))
+            {
+                var time = DateTime.UnixEpoch.AddSeconds(unixTime);
+                times.Add(time);
+            }
+        }
+        
+        return times.ToArray();
+    }
+
     public async Task SwitchToBranch(string sourcePath, string targetBranch, bool fromCurrent)
     {
         var currentBranch = await GetBranch(sourcePath);

@@ -83,4 +83,15 @@ public class WorkspaceTests
         var remote = await workspaceManager.GetRemoteUrl(tempPath!);
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/gitrunner.git", remote);
     }
+    
+    [TestMethod]
+    public async Task TestGetCommitTimes()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.ResetRepo(tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.OnlyCommits);
+        var commits = await workspaceManager.GetCommitTimes(tempPath!);
+        Assert.IsTrue(commits.Length > 8);
+        Assert.IsTrue(commits[0] > commits[1]);
+    }
 }
