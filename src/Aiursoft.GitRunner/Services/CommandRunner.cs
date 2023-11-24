@@ -6,7 +6,6 @@ using System.Diagnostics;
 
 namespace Aiursoft.GitRunner.Services;
 
-
 public class CommandRunner : ITransientDependency
 {
     private readonly ILogger<CommandRunner> _logger;

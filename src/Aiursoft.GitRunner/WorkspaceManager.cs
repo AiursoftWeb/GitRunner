@@ -86,6 +86,7 @@ public class WorkspaceManager : ITransientDependency
     /// <param name="path">Path on disk.</param>
     /// <param name="branch">Init branch.</param>
     /// <param name="endPoint">Endpoint. Used for Git clone.</param>
+    /// <param name="cloneMode">Clone mode</param>
     /// <returns>Task</returns>
     public async Task Clone(string path, string branch, string endPoint, CloneMode cloneMode)
     {
@@ -95,11 +96,11 @@ public class WorkspaceManager : ITransientDependency
             case CloneMode.Full:
                 command = $"clone -b {branch} {endPoint} .";break;
             case CloneMode.OnlyCommits:
-                command = $"clone --filter=tree:0 <url> -b {branch} {endPoint} ."; break;
+                command = $"clone --filter=tree:0 -b {branch} {endPoint} ."; break;
             case CloneMode.CommitsAndTrees:
-                command = $"clone --filter=blob:none <url> -b {branch} {endPoint} ."; break;
+                command = $"clone --filter=blob:none -b {branch} {endPoint} ."; break;
             case CloneMode.Depth1:
-                command = $"clone --depth=1 <url> -b {branch} {endPoint} ."; break;
+                command = $"clone --depth=1 -b {branch} {endPoint} ."; break;
             default:
                 throw new NotSupportedException($"Clone mode {cloneMode} is not supported.");
         }
@@ -115,6 +116,7 @@ public class WorkspaceManager : ITransientDependency
     /// <param name="path">Path</param>
     /// <param name="branch">Branch name</param>
     /// <param name="endPoint">Git clone endpoint.</param>
+    /// <param name="cloneMode">Clone mode</param>
     /// <returns>Task</returns>
     public async Task ResetRepo(string path, string branch, string endPoint, CloneMode cloneMode)
     {

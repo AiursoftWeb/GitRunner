@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A2FF9CBA-204
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aiursoft.GitRunner", "src\Aiursoft.GitRunner\Aiursoft.GitRunner.csproj", "{09BE9261-AD55-4831-BF1B-ACD7980913A8}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{BD265084-B0AF-4CA0-A05F-39C80B4ECC71}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aiursoft.GitRunner.Tests", "tests\Aiursoft.GitRunner.Tests\Aiursoft.GitRunner.Tests.csproj", "{F3E72F92-8397-422D-B506-0732EAB506E4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,11 +21,19 @@ Global
 		{09BE9261-AD55-4831-BF1B-ACD7980913A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09BE9261-AD55-4831-BF1B-ACD7980913A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09BE9261-AD55-4831-BF1B-ACD7980913A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3E72F92-8397-422D-B506-0732EAB506E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3E72F92-8397-422D-B506-0732EAB506E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3E72F92-8397-422D-B506-0732EAB506E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3E72F92-8397-422D-B506-0732EAB506E4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{09BE9261-AD55-4831-BF1B-ACD7980913A8} = {A2FF9CBA-2040-4FD9-95EC-F6289467C691}
+		{F3E72F92-8397-422D-B506-0732EAB506E4} = {BD265084-B0AF-4CA0-A05F-39C80B4ECC71}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F8AAD57E-B090-4528-813E-E158B6AF46D1}
 	EndGlobalSection
 EndGlobal
