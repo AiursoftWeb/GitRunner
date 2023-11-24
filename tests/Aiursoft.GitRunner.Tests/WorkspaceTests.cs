@@ -90,6 +90,17 @@ public class WorkspaceTests
     }
     
     [TestMethod]
+    public async Task TestResetBareDefaultBranch()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.BareWithOnlyCommits);
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+            CloneMode.BareWithOnlyCommits);
+        Assert.IsTrue(Directory.Exists(_tempPath));
+    }
+    
+    [TestMethod]
     public async Task TestGetBranch()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();

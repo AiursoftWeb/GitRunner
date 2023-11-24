@@ -161,20 +161,31 @@ public class WorkspaceManager : ITransientDependency
                     path);
             }
 
-            await _commandRunner.RunGit(path, "reset --hard HEAD");
-            await _commandRunner.RunGit(path, "clean . -fdx");
-            if (!string.IsNullOrWhiteSpace(branch))
+            if (await IsBareRepo(path))
             {
-                await SwitchToBranch(path, branch, false);
-            }
-            await Fetch(path);
-            if (!string.IsNullOrWhiteSpace(branch))
-            {
-                await _commandRunner.RunGit(path, $"reset --hard origin/{branch}");
+                _logger.LogInformation("The repo at {Path} is a bare repo. We will fetch it.", path);
+                var currentBranch = await GetBranch(path);
+                await _commandRunner.RunGit(path, $"fetch -q origin {currentBranch}:{currentBranch}");
             }
             else
             {
-                await _commandRunner.RunGit(path, $"reset --hard origin/HEAD");                
+                _logger.LogInformation("The repo at {Path} is not a bare repo. We will reset it.", path);
+                await _commandRunner.RunGit(path, "reset --hard HEAD");
+                await _commandRunner.RunGit(path, "clean . -fdx");
+                if (!string.IsNullOrWhiteSpace(branch))
+                {
+                    await SwitchToBranch(path, branch, false);
+                }
+
+                await Fetch(path);
+                if (!string.IsNullOrWhiteSpace(branch))
+                {
+                    await _commandRunner.RunGit(path, $"reset --hard origin/{branch}");
+                }
+                else
+                {
+                    await _commandRunner.RunGit(path, $"reset --hard origin/HEAD");
+                }
             }
         }
         catch (GitCommandException e) when (
@@ -182,6 +193,7 @@ public class WorkspaceManager : ITransientDependency
             e.Message.Contains("unknown revision or path") ||
             e.Message.Contains($"is not a repository for {endPoint}"))
         {
+            _logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path, e.Message);
             ClearPath(path);
             await Clone(path, branch, endPoint, cloneMode);
         }
