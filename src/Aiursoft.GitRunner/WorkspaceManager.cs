@@ -165,7 +165,7 @@ public class WorkspaceManager : ITransientDependency
             {
                 _logger.LogInformation("The repo at {Path} is a bare repo. We will fetch it.", path);
                 var currentBranch = await GetBranch(path);
-                await _commandRunner.RunGit(path, $"fetch -q origin {currentBranch}:{currentBranch}");
+                await _commandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}");
             }
             else
             {
