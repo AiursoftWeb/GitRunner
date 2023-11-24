@@ -3,7 +3,7 @@
 public enum CloneMode
 {
     /// <summary>
-    /// git clone --filter=blob:none <url> 
+    /// git clone --filter=blob:none
     /// 
     /// creates a blobless clone. These clones download all reachable commits and trees, while fetching blobs on-demand. 
     /// 
@@ -12,7 +12,7 @@ public enum CloneMode
     CommitsAndTrees,
 
     /// <summary>
-    /// git clone --filter=tree:0 <url>
+    /// git clone --filter=tree:0
     /// 
     /// creates a treeless clone. These clones download all reachable commits, while fetching trees and blobs on-demand. 
     /// 
@@ -21,7 +21,7 @@ public enum CloneMode
     OnlyCommits,
 
     /// <summary>
-    /// git clone --depth=1 <url>
+    /// git clone --depth=1
     /// 
     /// creates a shallow clone. These clones truncate the commit history to reduce the clone size. 
     /// 
@@ -30,7 +30,7 @@ public enum CloneMode
     Depth1,
 
     /// <summary>
-    /// git clone <url>
+    /// git clone
     /// 
     /// creates a full clone. These clones download all reachable commits, trees, and blobs.
     /// 
