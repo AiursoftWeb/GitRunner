@@ -15,7 +15,7 @@
     <Description>Nuget package of 'GitRunner' provided by Aiursoft</Description>
     <PackageId>Aiursoft.GitRunner</PackageId>
     <PackageTags>nuget package dotnet csproj dependencies git runner</PackageTags>
-    <PackageReadmeFile>Readme.md</PackageReadmeFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="." />
