@@ -174,6 +174,7 @@ public class WorkspaceManager : ITransientDependency
                 await _commandRunner.RunGit(path, "clean . -fdx");
                 if (!string.IsNullOrWhiteSpace(branch))
                 {
+                    _logger.LogInformation("Switching to branch {Branch} at {Path}", branch, path);
                     await SwitchToBranch(path, branch, false);
                 }
 
