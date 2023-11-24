@@ -45,5 +45,14 @@ public enum CloneMode
     ///
     /// These clones are best for server environments where you don't need a working copy of the code. They are also helpful for build environments where the repository will be deleted after a single build.
     /// </summary>
-    Bare
+    Bare,
+    
+    /// <summary>
+    /// git clone --bare --filter=tree:0
+    ///
+    /// creates a bare clone. These clones download all reachable commits, but omit checking out any files.
+    ///
+    /// These clones are best for server environments where you don't need a working copy of the code. They are also helpful for build environments where the repository will be deleted after a single build.
+    /// </summary>
+    BareWithOnlyCommits,
 }

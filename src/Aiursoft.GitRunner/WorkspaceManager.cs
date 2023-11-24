@@ -126,10 +126,17 @@ public class WorkspaceManager : ITransientDependency
             CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {endPoint} .",
             CloneMode.Depth1 => $"clone --depth=1 {branchArg} {endPoint} .",
             CloneMode.Bare => $"clone --bare {branchArg} {endPoint} .",
+            CloneMode.BareWithOnlyCommits => $"clone --bare --filter=tree:0 {branchArg} {endPoint} .",
             _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
         };
 
         await _commandRunner.RunGit(path, command);
+    }
+    
+    public async Task<bool> IsBareRepo(string path)
+    {
+        var gitConfigOutput = await _commandRunner.RunGit(path, "config --get core.bare");
+        return gitConfigOutput.Contains("true");
     }
 
     /// <summary>
@@ -148,9 +155,11 @@ public class WorkspaceManager : ITransientDependency
         {
             var remote = await GetRemoteUrl(path);
             if (!string.Equals(remote, endPoint, StringComparison.OrdinalIgnoreCase))
+            {
                 throw new GitCommandException(
                     $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v", remote,
                     path);
+            }
 
             await _commandRunner.RunGit(path, "reset --hard HEAD");
             await _commandRunner.RunGit(path, "clean . -fdx");
