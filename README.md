@@ -4,7 +4,7 @@
 [![Pipeline stat](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.cn/aiursoft/CSTools/-/pipelines)
 [![Test Coverage](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/coverage.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/pipelines)
 [![NuGet version (Aiursoft.GitRunner)](https://img.shields.io/nuget/v/Aiursoft.gitrunner.svg)](https://www.nuget.org/packages/Aiursoft.gitrunner/)
-[![ManHours](https://manhours.aiursoft.cn/gitlab/gitlab.aiursoft.cn/aiursoft/gitrunner.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/commits/master?ref_type=heads)
+[![ManHours](https://manhours.aiursoft.cn/r/gitlab.aiursoft.cn/aiursoft/gitrunner.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/commits/master?ref_type=heads)
 
 GitRunner is a tool to help you run git commands in C#.
 
