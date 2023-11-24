@@ -58,7 +58,7 @@ public class CommandRunner : ITransientDependency
                 path);
         }
 
-        var executeTask = Task.Run(process.WaitForExit);
+        var executeTask = process.WaitForExitAsync();
         await Task.WhenAny(Task.Delay(timeout.Value), executeTask);
         if (!executeTask.IsCompleted)
         {

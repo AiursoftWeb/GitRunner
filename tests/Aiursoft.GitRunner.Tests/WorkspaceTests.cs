@@ -65,6 +65,8 @@ public class WorkspaceTests
             "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
+        var branch = await workspaceManager.GetBranch(_tempPath!);
+        Assert.AreEqual("master", branch);
     }
     
     [TestMethod]
@@ -111,6 +113,17 @@ public class WorkspaceTests
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.OnlyCommits);
+        var commits = await workspaceManager.GetCommitTimes(_tempPath!);
+        Assert.IsTrue(commits.Length > 8);
+        Assert.IsTrue(commits[0] > commits[1]);
+    }
+    
+    [TestMethod]
+    public async Task TestGetCommitTimesFromEdi()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
+            CloneMode.Full);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
         Assert.IsTrue(commits.Length > 8);
         Assert.IsTrue(commits[0] > commits[1]);
