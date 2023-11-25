@@ -2,6 +2,7 @@
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GitRunner.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aiursoft.GitRunner.Tests;
@@ -16,7 +17,7 @@ public class WorkspaceTests
     public void Init()
     {
         _serviceProvider = new ServiceCollection()
-            .AddLogging()
+            .AddLogging(l => l.AddConsole())
             .AddGitRunner()
             .BuildServiceProvider();
         _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());

@@ -59,42 +59,59 @@ public class CommandRunner : ITransientDependency
                 path);
         }
 
+
         var outputBuilder = new StringBuilder();
-        while (!process.StandardOutput.EndOfStream)
+        var errorBuilder = new StringBuilder();
+        var readOutputTask = Task.Run(async () =>
         {
-            var line = await process.StandardOutput.ReadLineAsync();
-            outputBuilder.AppendLine(line);
-        }
+            while (!process.StandardOutput.EndOfStream)
+            {
+                var line = await process.StandardOutput.ReadLineAsync();
+                outputBuilder.AppendLine(line);
+            }
+        });
+        var readErrorTask = Task.Run(async () =>
+        {
+            while (!process.StandardError.EndOfStream)
+            {
+                var line = await process.StandardError.ReadLineAsync();
+                errorBuilder.AppendLine(line);
+            }
+        });
 
         var executeTask = process.WaitForExitAsync();
-        await Task.WhenAny(Task.Delay(timeout.Value), executeTask);
-        if (!executeTask.IsCompleted)
+        var programTask = Task.WhenAll(readOutputTask, readErrorTask, executeTask);
+        await Task.WhenAny(Task.Delay(timeout.Value), programTask);
+        if (!programTask.IsCompleted)
         {
             throw new TimeoutException($@"Execute git command: git {arguments} at {path} was time out! Timeout is {timeout}.");
         }
 
         if (!integrateResultInProcess) return string.Empty;
 
-        var consoleOutput = string.Empty;
         var output = outputBuilder.ToString();
-        var error = await process.StandardError.ReadToEndAsync();
+        var error = errorBuilder.ToString();
         if (
             output.Contains("'git-lfs' was not found") ||
             error.Contains("'git-lfs' was not found") ||
             output.Contains("git-lfs: command not found") ||
             error.Contains("git-lfs: command not found"))
+        {
             throw new GitCommandException(
                 "Start Git failed! Git LFS not found!",
                 arguments,
                 "Start git failed.",
                 path);
+        }
+
+        var finalOutput = string.Empty;
 
         if (!string.IsNullOrWhiteSpace(error))
         {
-            consoleOutput = error;
+            finalOutput = error;
             if (error.Contains("fatal") || error.Contains("error:"))
             {
-                _logger.LogTrace("Console command {Command} provided following fatal output {Output}", arguments, consoleOutput);
+                _logger.LogTrace("Console command {Command} provided following fatal output {Output}", arguments, finalOutput);
                 throw new GitCommandException(
                     $"Git command resulted an error: git {arguments} on {path} got result: {error}",
                     arguments,
@@ -103,8 +120,8 @@ public class CommandRunner : ITransientDependency
             }
         }
 
-        consoleOutput += output;
-        _logger.LogTrace("Console command {Command} provided following success output {Output}", arguments, consoleOutput);
-        return consoleOutput;
+        finalOutput += output;
+        _logger.LogTrace("Console command {Command} provided following success output {Output}", arguments, finalOutput);
+        return finalOutput;
     }
 }
