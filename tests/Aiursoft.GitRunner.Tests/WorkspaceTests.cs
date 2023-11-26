@@ -1,6 +1,5 @@
 ﻿using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner.Models;
-using Aiursoft.GitRunner.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -149,7 +148,7 @@ public class WorkspaceTests
     public async Task TestResetRepoTwoTimes()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        var commandService = _serviceProvider!.GetRequiredService<CommandRunner>();
+        var commandService = _serviceProvider!.GetRequiredService<Services.GitCommandRunner>();
         await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
