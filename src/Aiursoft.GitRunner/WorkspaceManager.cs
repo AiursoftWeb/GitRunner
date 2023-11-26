@@ -1,4 +1,5 @@
 ﻿using Aiursoft.Canon;
+using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GitRunner.Services;
@@ -195,7 +196,7 @@ public class WorkspaceManager : ITransientDependency
             e.Message.Contains($"is not a repository for {endPoint}"))
         {
             _logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path, e.Message);
-            ClearPath(path);
+            FolderDeleter.DeleteByForce(path, true);
             await Clone(path, branch, endPoint, cloneMode);
         }
     }
@@ -287,13 +288,5 @@ public class WorkspaceManager : ITransientDependency
                     return await workJob;
                 throw new TimeoutException("Git fetch job has exceeded the timeout and we have to retry it.");
             });
-    }
-
-    public void ClearPath(string path)
-    {
-        var di = new DirectoryInfo(path);
-        foreach (var file in di.GetFiles()) file.Delete();
-
-        foreach (var dir in di.GetDirectories()) dir.Delete(true);
     }
 }

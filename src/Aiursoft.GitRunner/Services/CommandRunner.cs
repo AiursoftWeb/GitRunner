@@ -50,7 +50,7 @@ public class CommandRunner : ITransientDependency
         {
             process.Start();
         }
-        catch (Win32Exception)
+        catch
         {
             throw new GitCommandException(
                 "Start Git failed! Please install Git at https://git-scm.com .",

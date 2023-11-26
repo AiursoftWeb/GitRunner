@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+﻿using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GitRunner.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,22 +23,14 @@ public class WorkspaceTests
         _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempPath);
     }
-
+    
     [TestCleanup]
     public void Clean()
     {
         // Delete the tempPath
         if (Directory.Exists(_tempPath))
         {
-            // Delete it, suppress error
-            try
-            {
-                Directory.Delete(_tempPath, true);
-            }
-            catch
-            {
-                // ignored
-            }
+            FolderDeleter.DeleteByForce(_tempPath);
         }
     }
 
@@ -156,13 +148,6 @@ public class WorkspaceTests
     [TestMethod]
     public async Task TestResetRepoTwoTimes()
     {
-        // Ignore on Windows:
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // TODO: Support Windows
-            return;
-        }
-        
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         var commandService = _serviceProvider!.GetRequiredService<CommandRunner>();
         await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
