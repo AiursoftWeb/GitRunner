@@ -10,15 +10,15 @@ namespace Aiursoft.GitRunner;
 
 public class Commit
 {
-    public string Author { get; set; } = string.Empty;
+    public string Author { get; init; } = string.Empty;
     
-    public string Email { get; set; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
     
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 
-    public DateTime Time { get; set; }
+    public DateTime Time { get; init; }
     
-    public string Hash { get; set; } = string.Empty;
+    public string Hash { get; init; } = string.Empty;
 }
 
 /// <summary>
