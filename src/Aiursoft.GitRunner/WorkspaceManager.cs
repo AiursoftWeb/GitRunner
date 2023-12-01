@@ -8,6 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Aiursoft.GitRunner;
 
+public class Commit
+{
+    public string Author { get; set; } = string.Empty;
+    
+    public string Email { get; set; } = string.Empty;
+    
+    public string Message { get; set; } = string.Empty;
+
+    public DateTime Time { get; set; }
+    
+    public string Hash { get; set; } = string.Empty;
+}
+
 /// <summary>
 ///     Workspace initializer.
 /// </summary>
@@ -61,6 +74,27 @@ public class WorkspaceManager : ITransientDependency
         }
         
         return times.ToArray();
+    }
+    
+    public async Task<Commit[]> GetCommits(string path)
+    {
+        var commits = new List<Commit>();
+        var gitCommitsOutput = await _gitCommandRunner.RunGit(path, "--no-pager log --format=%an%n%ae%n%s%n%at%n%H");
+        var lines = gitCommitsOutput.Split('\n');
+        for (var i = 0; i + 4 < lines.Length; i += 5)
+        {
+            var commit = new Commit
+            {
+                Author = lines[i],
+                Email = lines[i + 1],
+                Message = lines[i + 2],
+                Time = DateTime.UnixEpoch.AddSeconds(long.Parse(lines[i + 3])),
+                Hash = lines[i + 4]
+            };
+            commits.Add(commit);
+        }
+        
+        return commits.ToArray();
     }
 
     public async Task SwitchToBranch(string sourcePath, string targetBranch, bool fromCurrent)

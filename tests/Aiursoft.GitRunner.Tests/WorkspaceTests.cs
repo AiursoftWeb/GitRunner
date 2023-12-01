@@ -135,6 +135,17 @@ public class WorkspaceTests
     }
     
     [TestMethod]
+    public async Task TestGetCommitsFromEdi()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
+            CloneMode.Full);
+        var commits = await workspaceManager.GetCommits(_tempPath!);
+        Assert.IsTrue(commits.Length > 8);
+        Assert.AreEqual(commits.Last().Message, "Initial commit");
+    }
+    
+    [TestMethod]
     public async Task TestGetRemoteUrlWithOnlyCommits()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
