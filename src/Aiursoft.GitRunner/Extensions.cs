@@ -19,6 +19,7 @@ public static class Extensions
         services.AddTransient<CommandService>();
         services.AddTaskCanon();
         services.AddTransient<WorkspaceManager>();
+        services.AddTransient<RetryEngine>();
         services.AddTransient<GitCommandRunner>();
         return services;
     }
