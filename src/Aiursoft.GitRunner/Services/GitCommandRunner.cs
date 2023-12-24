@@ -33,50 +33,47 @@ public class GitCommandRunner : ITransientDependency
         try
         {
             _logger.LogTrace("Running git command {Command} at {Path}", arguments, path);
-            (_, output, error) = await _commandService.RunCommandAsync(
+            (var exitCode, output, error) = await _commandService.RunCommandAsync(
                 bin: "git", 
                 arg:arguments,
                 path: path,
                 timeout: timeout);
+            
+            if (
+                output.Contains("'git-lfs' was not found") ||
+                error.Contains("'git-lfs' was not found") ||
+                output.Contains("git-lfs: command not found") ||
+                error.Contains("git-lfs: command not found"))
+            {
+                throw new GitCommandException(
+                    "Start Git failed! Git LFS not found!",
+                    arguments,
+                    string.Empty,
+                    "Start git failed.",
+                    path);
+            }
+            
+            if (exitCode != 0)
+            {
+                throw new GitCommandException(
+                    $"Git command resulted an error: git {arguments} on {path} got output: {output}, error: {error}",
+                    arguments,
+                    output,
+                    error,
+                    path);
+            }
         }
         catch (Win32Exception)
         {
             throw new GitCommandException(
                 "Start Git failed! Git not found!",
                 arguments,
-                "Start git failed.",
-                path);
-        }
-        if (
-            output.Contains("'git-lfs' was not found") ||
-            error.Contains("'git-lfs' was not found") ||
-            output.Contains("git-lfs: command not found") ||
-            error.Contains("git-lfs: command not found"))
-        {
-            throw new GitCommandException(
-                "Start Git failed! Git LFS not found!",
-                arguments,
+                string.Empty,
                 "Start git failed.",
                 path);
         }
 
-        var finalOutput = string.Empty;
-
-        if (!string.IsNullOrWhiteSpace(error))
-        {
-            finalOutput = error;
-            if (error.Contains("fatal") || error.Contains("error:"))
-            {
-                _logger.LogTrace("Console command {Command} provided following fatal output {Output}", arguments, finalOutput);
-                throw new GitCommandException(
-                    $"Git command resulted an error: git {arguments} on {path} got result: {error}",
-                    arguments,
-                    error,
-                    path);
-            }
-        }
-
-        finalOutput += output;
+        var finalOutput = output + error;
         _logger.LogTrace("Console command {Command} provided following success output {Output}", arguments, finalOutput);
         return finalOutput;
     }

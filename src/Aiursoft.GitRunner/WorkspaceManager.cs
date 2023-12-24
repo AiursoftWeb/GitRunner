@@ -84,7 +84,7 @@ public class WorkspaceManager : ITransientDependency
         return commits.ToArray();
     }
 
-    public async Task SwitchToBranch(string sourcePath, string targetBranch, bool fromCurrent)
+    public async Task SwitchToBranch(string sourcePath, string targetBranch, bool enforceCurrentContent)
     {
         var currentBranch = await GetBranch(sourcePath);
         if (string.Equals(currentBranch, targetBranch, StringComparison.OrdinalIgnoreCase)) return;
@@ -95,10 +95,10 @@ public class WorkspaceManager : ITransientDependency
         }
         catch (GitCommandException e) when (e.Message.Contains("already exists"))
         {
-            if (fromCurrent)
+            if (enforceCurrentContent)
             {
                 await _gitCommandRunner.RunGit(sourcePath, $"branch -D {targetBranch}");
-                await SwitchToBranch(sourcePath, targetBranch, fromCurrent);
+                await SwitchToBranch(sourcePath, targetBranch, enforceCurrentContent);
             }
             else
             {
@@ -179,7 +179,9 @@ public class WorkspaceManager : ITransientDependency
             if (!string.Equals(remote, endPoint, StringComparison.OrdinalIgnoreCase))
             {
                 throw new GitCommandException(
-                    $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v", remote,
+                    $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v", 
+                    output: remote,
+                    error: remote,
                     path);
             }
 
@@ -258,7 +260,7 @@ public class WorkspaceManager : ITransientDependency
         {
             await _gitCommandRunner.RunGit(sourcePath, $@"remote set-url ninja {endpoint}");
         }
-        catch (GitCommandException e) when (e.GitOutput.Contains("No such remote"))
+        catch (GitCommandException e) when (e.GitError.Contains("No such remote"))
         {
             await _gitCommandRunner.RunGit(sourcePath, $@"remote add ninja {endpoint}");
         }
@@ -272,7 +274,7 @@ public class WorkspaceManager : ITransientDependency
             _logger.LogInformation("Running git {Command}", command);
             await _gitCommandRunner.RunGit(sourcePath, command);
         }
-        catch (GitCommandException e) when (e.GitOutput.Contains("rejected]"))
+        catch (GitCommandException e) when (e.GitError.Contains("rejected]"))
         {
             // In this case, the remote branch is later than local.
             // So we might have some conflict.

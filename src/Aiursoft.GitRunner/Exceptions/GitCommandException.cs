@@ -11,17 +11,20 @@ public class GitCommandException : Exception
     /// </summary>
     /// <param name="message">Error message.</param>
     /// <param name="command">Command tried to run</param>
-    /// <param name="result">Result.</param>
+    /// <param name="output">Output.</param>
+    /// <param name="error">Result.</param>
     /// <param name="path">Path.</param>
     public GitCommandException(
         string message,
         string command,
-        string result,
+        string output,
+        string error,
         string path)
         : base(message)
     {
         Command = command;
-        GitOutput = result;
+        GitOutput = output;
+        GitError = error;
         Path = path;
     }
 
@@ -31,9 +34,14 @@ public class GitCommandException : Exception
     public string Command { get; }
 
     /// <summary>
-    ///     Output.
+    /// Output.
     /// </summary>
     public string GitOutput { get; }
+    
+    /// <summary>
+    /// Error.
+    /// </summary>
+    public string GitError { get; }
 
     /// <summary>
     ///     Executing path.
