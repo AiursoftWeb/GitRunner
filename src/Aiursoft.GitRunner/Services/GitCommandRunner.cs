@@ -33,7 +33,11 @@ public class GitCommandRunner : ITransientDependency
         try
         {
             _logger.LogTrace("Running git command {Command} at {Path}", arguments, path);
-            (_, output, error) = await _commandService.RunCommandAsync("git", arguments, path, timeout);
+            (_, output, error) = await _commandService.RunCommandAsync(
+                bin: "git", 
+                arg:arguments,
+                path: path,
+                timeout: timeout);
         }
         catch (Win32Exception)
         {
