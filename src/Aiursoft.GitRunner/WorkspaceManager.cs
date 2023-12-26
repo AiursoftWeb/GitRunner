@@ -84,6 +84,7 @@ public class WorkspaceManager : ITransientDependency
         return commits.ToArray();
     }
 
+    // ReSharper disable once MemberCanBePrivate.Global
     public async Task SwitchToBranch(string sourcePath, string targetBranch, bool enforceCurrentContent)
     {
         var currentBranch = await GetBranch(sourcePath);
@@ -155,6 +156,7 @@ public class WorkspaceManager : ITransientDependency
         await _gitCommandRunner.RunGit(path, command);
     }
     
+    // ReSharper disable once MemberCanBePrivate.Global
     public async Task<bool> IsBareRepo(string path)
     {
         var gitConfigOutput = await _gitCommandRunner.RunGit(path, "config --get core.bare");
@@ -239,10 +241,15 @@ public class WorkspaceManager : ITransientDependency
         return !commitResult.Contains("nothing to commit, working tree clean");
     }
 
+    // ReSharper disable once UnusedMember.Global
     public async Task SetUserConfig(string sourcePath, string username, string email)
     {
-        await _gitCommandRunner.RunGit(sourcePath, $@"config user.name ""{username}""");
-        await _gitCommandRunner.RunGit(sourcePath, $@"config user.email ""{email}""");
+        await _gitCommandRunner.RunGit(sourcePath, $"""
+                                                    config user.name "{username.Replace("\"", "\\\"")}"
+                                                    """);
+        await _gitCommandRunner.RunGit(sourcePath, $"""
+                                                    config user.email "{email.Replace("\"", "\\\"")}"
+                                                    """);
     }
 
     /// <summary>
