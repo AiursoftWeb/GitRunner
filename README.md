@@ -1,7 +1,7 @@
 # GitRunner
 
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/blob/master/LICENSE)
-[![Pipeline stat](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.cn/aiursoft/CSTools/-/pipelines)
+[![Pipeline stat](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/pipelines)
 [![Test Coverage](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/coverage.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/pipelines)
 [![NuGet version (Aiursoft.GitRunner)](https://img.shields.io/nuget/v/Aiursoft.gitrunner.svg)](https://www.nuget.org/packages/Aiursoft.gitrunner/)
 [![ManHours](https://manhours.aiursoft.cn/r/gitlab.aiursoft.cn/aiursoft/gitrunner.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/commits/master?ref_type=heads)
