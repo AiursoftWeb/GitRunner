@@ -196,6 +196,7 @@ public class WorkspaceTests
         await File.WriteAllTextAsync(readmePath, "Hello world!");
         var pendingCommit = await workspaceManager.PendingCommit(_tempPath);
         Assert.IsTrue(pendingCommit);
+        await workspaceManager.SetUserConfig(_tempPath, "tester", "tester@dotnet");
         var committed = await workspaceManager.CommitToBranch(_tempPath, "Test commit", "master");
         Assert.IsTrue(committed);
         try
