@@ -189,13 +189,13 @@ public class WorkspaceManager : ITransientDependency
 
             if (await IsBareRepo(path))
             {
-                _logger.LogInformation("The repo at {Path} is a bare repo. We will fetch it.", path);
+                _logger.LogTrace("The repo at {Path} is a bare repo. We will fetch it.", path);
                 var currentBranch = await GetBranch(path);
                 await _gitCommandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}");
             }
             else
             {
-                _logger.LogInformation("The repo at {Path} is not a bare repo. We will reset it.", path);
+                _logger.LogTrace("The repo at {Path} is a normal repo. We will reset it.", path);
                 await _gitCommandRunner.RunGit(path, "reset --hard HEAD");
                 await _gitCommandRunner.RunGit(path, "clean . -fdx");
                 if (!string.IsNullOrWhiteSpace(branch))
