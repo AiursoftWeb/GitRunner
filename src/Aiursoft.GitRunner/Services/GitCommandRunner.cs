@@ -25,9 +25,16 @@ public class GitCommandRunner : ITransientDependency
     /// <param name="path">Path</param>
     /// <param name="arguments">Arguments</param>
     /// <param name="timeout">timeout</param>
+    /// <param name="setSafeDirectoryFirst">setSafeDirectoryFirst</param>
     /// <returns>Task</returns>
-    public async Task<string> RunGit(string path, string arguments, TimeSpan? timeout = null)
+    public async Task<string> RunGit(string path, string arguments, TimeSpan? timeout = null, bool setSafeDirectoryFirst = true)
     {
+        if (setSafeDirectoryFirst)
+        {
+            // git config --global --add safe.directory path
+            await RunGit(path, "config --global --add safe.directory " + path, timeout, false);
+        }
+        
         string output;
         string error;
         try
