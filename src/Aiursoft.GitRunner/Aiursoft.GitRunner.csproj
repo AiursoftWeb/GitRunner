@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>8.0.11</Version>
+    <Version>8.0.12</Version>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Aiursoft.GitRunner</AssemblyName>
     <RootNamespace>Aiursoft.GitRunner</RootNamespace>
@@ -15,6 +15,10 @@
     <Description>Nuget package of 'GitRunner' provided by Aiursoft</Description>
     <PackageId>Aiursoft.GitRunner</PackageId>
     <PackageTags>nuget package dotnet csproj dependencies git runner</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://gitlab.aiursoft.cn/aiursoft/gitrunner</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://gitlab.aiursoft.cn/aiursoft/gitrunner.git</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
