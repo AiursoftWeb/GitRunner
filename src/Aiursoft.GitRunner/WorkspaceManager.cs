@@ -5,28 +5,19 @@ using Aiursoft.GitRunner.Models;
 using Aiursoft.GitRunner.Services;
 using Aiursoft.Scanner.Abstractions;
 using Microsoft.Extensions.Logging;
+// ReSharper disable InconsistentNaming
 
 namespace Aiursoft.GitRunner;
 
 /// <summary>
 ///     Workspace initializer.
 /// </summary>
-public class WorkspaceManager : ITransientDependency
+public class WorkspaceManager(
+    ILogger<WorkspaceManager> logger,
+    RetryEngine retryEngine,
+    GitCommandRunner gitCommandRunner)
+    : ITransientDependency
 {
-    private readonly GitCommandRunner _gitCommandRunner;
-    private readonly ILogger<WorkspaceManager> _logger;
-    private readonly RetryEngine _retryEngine;
-
-    public WorkspaceManager(
-        ILogger<WorkspaceManager> logger,
-        RetryEngine retryEngine,
-        GitCommandRunner gitCommandRunner)
-    {
-        _logger = logger;
-        _retryEngine = retryEngine;
-        _gitCommandRunner = gitCommandRunner;
-    }
-
     /// <summary>
     ///     Get current branch from a git repo.
     /// </summary>
@@ -34,7 +25,7 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Current branch.</returns>
     public async Task<string> GetBranch(string path)
     {
-        var gitBranchOutput = await _gitCommandRunner.RunGit(path, "rev-parse --abbrev-ref HEAD");
+        var gitBranchOutput = await gitCommandRunner.RunGit(path, "rev-parse --abbrev-ref HEAD");
         return gitBranchOutput
             .Split('\n')
             .Single(s => !string.IsNullOrWhiteSpace(s))
@@ -48,25 +39,41 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Datetime array</returns>
     public async Task<DateTime[]> GetCommitTimes(string path)
     {
-        var times = new List<DateTime>();
-        var gitCommitsOutput = await _gitCommandRunner.RunGit(path, "--no-pager log --format=%at");
-        var lines = gitCommitsOutput.Split('\n');
-        foreach (var commitTime in lines)
+        try
         {
-            if (long.TryParse(commitTime, out var unixTime))
+            var gitCommitsOutput = await gitCommandRunner.RunGit(path, "--no-pager log --format=%at");
+            var lines = gitCommitsOutput.Split('\n');
+            var times = new List<DateTime>();
+
+            foreach (var commitTime in lines)
             {
-                var time = DateTime.UnixEpoch.AddSeconds(unixTime);
-                times.Add(time);
+                if (long.TryParse(commitTime, out var unixTime))
+                {
+                    var time = DateTime.UnixEpoch.AddSeconds(unixTime);
+                    times.Add(time);
+                }
             }
+
+            return times.ToArray();
         }
-        
-        return times.ToArray();
+        catch (GitCommandException ex)
+        {
+            // Check for the 'no commits' type of error
+            if (ex.Message.Contains("does not have any commits yet"))
+            {
+                // Return an empty array to avoid further errors
+                return [];
+            }
+
+            // Otherwise rethrow so other errors bubble up
+            throw;
+        }
     }
     
     public async Task<Commit[]> GetCommits(string path)
     {
         var commits = new List<Commit>();
-        var gitCommitsOutput = await _gitCommandRunner.RunGit(path, "--no-pager log --format=%an%n%ae%n%s%n%at%n%H");
+        var gitCommitsOutput = await gitCommandRunner.RunGit(path, "--no-pager log --format=%an%n%ae%n%s%n%at%n%H");
         var lines = gitCommitsOutput.Split('\n');
         for (var i = 0; i + 4 < lines.Length; i += 5)
         {
@@ -92,18 +99,18 @@ public class WorkspaceManager : ITransientDependency
 
         try
         {
-            await _gitCommandRunner.RunGit(sourcePath, $"checkout -b {targetBranch}");
+            await gitCommandRunner.RunGit(sourcePath, $"checkout -b {targetBranch}");
         }
         catch (GitCommandException e) when (e.Message.Contains("already exists"))
         {
             if (enforceCurrentContent)
             {
-                await _gitCommandRunner.RunGit(sourcePath, $"branch -D {targetBranch}");
+                await gitCommandRunner.RunGit(sourcePath, $"branch -D {targetBranch}");
                 await SwitchToBranch(sourcePath, targetBranch, enforceCurrentContent);
             }
             else
             {
-                await _gitCommandRunner.RunGit(sourcePath, $"checkout {targetBranch}");
+                await gitCommandRunner.RunGit(sourcePath, $"checkout {targetBranch}");
             }
         }
     }
@@ -115,7 +122,7 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Remote URL.</returns>
     public async Task<string> GetRemoteUrl(string path)
     {
-        var gitRemoteOutput = await _gitCommandRunner.RunGit(path, "remote -v");
+        var gitRemoteOutput = await gitCommandRunner.RunGit(path, "remote -v");
         
         if (string.IsNullOrWhiteSpace(gitRemoteOutput))
         {
@@ -153,18 +160,18 @@ public class WorkspaceManager : ITransientDependency
             _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
         };
 
-        await _gitCommandRunner.RunGit(path, command);
+        await gitCommandRunner.RunGit(path, command);
     }
     
     // ReSharper disable once MemberCanBePrivate.Global
     public async Task<bool> IsBareRepo(string path)
     {
-        var gitConfigOutput = await _gitCommandRunner.RunGit(path, "config --get core.bare");
+        var gitConfigOutput = await gitCommandRunner.RunGit(path, "config --get core.bare");
         return gitConfigOutput.Contains("true");
     }
 
     /// <summary>
-    ///     Switch a folder to a target branch (Latest remote).
+    ///     Switch a folder to a target branch (The last state of the remote).
     ///     Supports empty folder. We will clone the repo there.
     ///     Supports folder with existing content. We will clean that folder and checkout to the target branch.
     /// </summary>
@@ -189,29 +196,29 @@ public class WorkspaceManager : ITransientDependency
 
             if (await IsBareRepo(path))
             {
-                _logger.LogTrace("The repo at {Path} is a bare repo. We will fetch it.", path);
+                logger.LogTrace("The repo at {Path} is a bare repo. We will fetch it.", path);
                 var currentBranch = await GetBranch(path);
-                await _gitCommandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}");
+                await gitCommandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}");
             }
             else
             {
-                _logger.LogTrace("The repo at {Path} is a normal repo. We will reset it.", path);
-                await _gitCommandRunner.RunGit(path, "reset --hard HEAD");
-                await _gitCommandRunner.RunGit(path, "clean . -fdx");
+                logger.LogTrace("The repo at {Path} is a normal repo. We will reset it.", path);
+                await gitCommandRunner.RunGit(path, "reset --hard HEAD");
+                await gitCommandRunner.RunGit(path, "clean . -fdx");
                 if (!string.IsNullOrWhiteSpace(branch))
                 {
-                    _logger.LogInformation("Switching to branch {Branch} at {Path}", branch, path);
+                    logger.LogInformation("Switching to branch {Branch} at {Path}", branch, path);
                     await SwitchToBranch(path, branch, false);
                 }
 
                 await Fetch(path);
                 if (!string.IsNullOrWhiteSpace(branch))
                 {
-                    await _gitCommandRunner.RunGit(path, $"reset --hard origin/{branch}");
+                    await gitCommandRunner.RunGit(path, $"reset --hard origin/{branch}");
                 }
                 else
                 {
-                    await _gitCommandRunner.RunGit(path, $"reset --hard origin/HEAD");
+                    await gitCommandRunner.RunGit(path, $"reset --hard origin/HEAD");
                 }
             }
         }
@@ -220,7 +227,7 @@ public class WorkspaceManager : ITransientDependency
             e.Message.Contains("unknown revision or path") ||
             e.Message.Contains($"is not a repository for {endPoint}"))
         {
-            _logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path, e.Message);
+            logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path, e.Message);
             FolderDeleter.DeleteByForce(path, true);
             await Clone(path, branch, endPoint, cloneMode);
         }
@@ -235,19 +242,19 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Saved.</returns>
     public async Task<bool> CommitToBranch(string sourcePath, string message, string branch)
     {
-        await _gitCommandRunner.RunGit(sourcePath, "add .");
+        await gitCommandRunner.RunGit(sourcePath, "add .");
         await SwitchToBranch(sourcePath, branch, true);
-        var commitResult = await _gitCommandRunner.RunGit(sourcePath, $@"commit -m ""{message}""");
+        var commitResult = await gitCommandRunner.RunGit(sourcePath, $@"commit -m ""{message}""");
         return !commitResult.Contains("nothing to commit, working tree clean");
     }
 
     // ReSharper disable once UnusedMember.Global
     public async Task SetUserConfig(string sourcePath, string username, string email)
     {
-        await _gitCommandRunner.RunGit(sourcePath, $"""
+        await gitCommandRunner.RunGit(sourcePath, $"""
                                                     config user.name "{username.Replace("\"", "\\\"")}"
                                                     """);
-        await _gitCommandRunner.RunGit(sourcePath, $"""
+        await gitCommandRunner.RunGit(sourcePath, $"""
                                                     config user.email "{email.Replace("\"", "\\\"")}"
                                                     """);
     }
@@ -265,11 +272,11 @@ public class WorkspaceManager : ITransientDependency
         // Set origin url.
         try
         {
-            await _gitCommandRunner.RunGit(sourcePath, $@"remote set-url ninja {endpoint}");
+            await gitCommandRunner.RunGit(sourcePath, $@"remote set-url ninja {endpoint}");
         }
         catch (GitCommandException e) when (e.GitError.Contains("No such remote"))
         {
-            await _gitCommandRunner.RunGit(sourcePath, $@"remote add ninja {endpoint}");
+            await gitCommandRunner.RunGit(sourcePath, $@"remote add ninja {endpoint}");
         }
 
         // Push to that origin.
@@ -278,8 +285,8 @@ public class WorkspaceManager : ITransientDependency
             var forceString = force ? "--force" : string.Empty;
 
             var command = $@"push --set-upstream ninja {branch} {forceString}";
-            _logger.LogInformation("Running git {Command}", command);
-            await _gitCommandRunner.RunGit(sourcePath, command);
+            logger.LogInformation("Running git {Command}", command);
+            await gitCommandRunner.RunGit(sourcePath, command);
         }
         catch (GitCommandException e) when (e.GitError.Contains("rejected]"))
         {
@@ -288,7 +295,7 @@ public class WorkspaceManager : ITransientDependency
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Git push failed to {SourcePath}, branch {Branch}, endpoint {Endpoint}", sourcePath, branch, endpoint);
+            logger.LogWarning(ex, "Git push failed to {SourcePath}, branch {Branch}, endpoint {Endpoint}", sourcePath, branch, endpoint);
             throw;
         }
     }
@@ -300,17 +307,17 @@ public class WorkspaceManager : ITransientDependency
     /// <returns>Bool</returns>
     public async Task<bool> PendingCommit(string sourcePath)
     {
-        var statusResult = await _gitCommandRunner.RunGit(sourcePath, @"status");
+        var statusResult = await gitCommandRunner.RunGit(sourcePath, @"status");
         var clean = statusResult.Contains("working tree clean");
         return !clean;
     }
 
     public Task Fetch(string path)
     {
-        return _retryEngine.RunWithRetry(
+        return retryEngine.RunWithRetry(
             async attempt =>
             {
-                var workJob = _gitCommandRunner.RunGit(path, "fetch --verbose");
+                var workJob = gitCommandRunner.RunGit(path, "fetch --verbose");
                 var waitJob = Task.Delay(TimeSpan.FromSeconds(attempt * 50));
                 await Task.WhenAny(workJob, waitJob);
                 if (workJob.IsCompleted)
