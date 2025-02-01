@@ -216,7 +216,7 @@ public class WorkspaceTests
     public async Task TestInitAddAndCommit()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.Init(_tempPath);
+        await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
         
         // Create a new file

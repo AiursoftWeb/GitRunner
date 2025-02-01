@@ -158,8 +158,15 @@ public class WorkspaceManager(
     
     public async Task<string> GetCurrentUserEmail(string path)
     {
-        var email = await gitCommandRunner.RunGit(path, "config user.email");
-        return email.Trim();
+        try
+        {
+            var email = await gitCommandRunner.RunGit(path, "config user.email");
+            return email.Trim();
+        }
+        catch (GitCommandException)
+        {
+            return string.Empty;
+        }
     }
 
     /// <summary>
