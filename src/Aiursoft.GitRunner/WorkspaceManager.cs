@@ -137,6 +137,29 @@ public class WorkspaceManager(
             .First()
             .Trim();
     }
+    
+    public async Task Init(string path)
+    {
+        await gitCommandRunner.RunGit(path, "init");
+    }
+    
+    public async Task AddAndCommit(string path, string message)
+    {
+        await gitCommandRunner.RunGit(path, "add .");
+        if (!string.IsNullOrWhiteSpace(await GetCurrentUserEmail(path)))
+        {
+            await gitCommandRunner.RunGit(path, $@"commit -m ""{message}""");
+        }
+        {
+            await gitCommandRunner.RunGit(path, $@"commit -m ""{message}"" --author ""Aiursoft <nobody@domain.com>""");
+        }
+    }
+    
+    public async Task<string> GetCurrentUserEmail(string path)
+    {
+        var email = await gitCommandRunner.RunGit(path, "config user.email");
+        return email.Trim();
+    }
 
     /// <summary>
     ///     Clone a repo.
