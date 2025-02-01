@@ -152,6 +152,8 @@ public class WorkspaceManager(
         }
         else
         {
+            await gitCommandRunner.RunGit(path, $@"config user.email ""nobody@domain.com""");
+            await gitCommandRunner.RunGit(path, $@"config user.name ""Aiursoft""");
             await gitCommandRunner.RunGit(path, $@"commit -m ""{message}"" --author ""Aiursoft <nobody@domain.com>""");
         }
     }
