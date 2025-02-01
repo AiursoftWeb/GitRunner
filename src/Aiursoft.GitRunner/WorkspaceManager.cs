@@ -150,6 +150,7 @@ public class WorkspaceManager(
         {
             await gitCommandRunner.RunGit(path, $@"commit -m ""{message}""");
         }
+        else
         {
             await gitCommandRunner.RunGit(path, $@"commit -m ""{message}"" --author ""Aiursoft <nobody@domain.com>""");
         }

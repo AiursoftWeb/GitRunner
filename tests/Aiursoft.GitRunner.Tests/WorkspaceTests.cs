@@ -211,4 +211,24 @@ public class WorkspaceTests
             Assert.IsTrue(e.Message.Contains("fatal: unable to access 'https://bad/': Could not resolve host: bad"));
         }
     }
+
+    [TestMethod]
+    public async Task TestInitAddAndCommit()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.Init(_tempPath);
+        Assert.IsTrue(Directory.Exists(_tempPath));
+        
+        // Create a new file
+        var readmePath = Path.Combine(_tempPath, "README.md");
+        await File.WriteAllTextAsync(readmePath, "Hello world!");
+        Assert.IsTrue(File.Exists(readmePath));
+        
+        // Add the file and commit
+        await workspaceManager.AddAndCommit(_tempPath, "Add README.md");
+        
+        // Check the commit
+        var commits = await workspaceManager.GetCommits(_tempPath);
+        Assert.AreEqual(1, commits.Length);
+    }
 }
