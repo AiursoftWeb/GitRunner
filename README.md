@@ -8,7 +8,7 @@
 
 GitRunner is a tool to help you run git commands in C#.
 
-## Installation
+## How to install
 
 To install `Aiursoft.GitRunner` to your project from [nuget.org](https://www.nuget.org/packages/Aiursoft.GitRunner/):
 
