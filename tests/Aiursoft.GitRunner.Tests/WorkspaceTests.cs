@@ -73,7 +73,7 @@ public class WorkspaceTests
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
-    
+
     [TestMethod]
     public async Task TestResetTwice()
     {
@@ -218,17 +218,36 @@ public class WorkspaceTests
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
-        
+
         // Create a new file
         var readmePath = Path.Combine(_tempPath, "README.md");
         await File.WriteAllTextAsync(readmePath, "Hello world!");
         Assert.IsTrue(File.Exists(readmePath));
-        
+
         // Add the file and commit
         await workspaceManager.AddAndCommit(_tempPath, "Add README.md");
-        
+
         // Check the commit
         var commits = await workspaceManager.GetCommits(_tempPath);
         Assert.AreEqual(1, commits.Length);
+    }
+
+    [TestMethod]
+    public async Task TestMirrorAllBranches()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.Init(_tempPath!);
+        Assert.IsTrue(Directory.Exists(_tempPath));
+
+        await workspaceManager.AddOrSetRemoteUrl(
+            path: _tempPath,
+            remoteName: "origin",
+            remoteUrl: "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        await workspaceManager.EnsureAllLocalBranchesUpToDateWithRemote(
+            path: _tempPath,
+            remote: "origin");
+
+        var branches = await workspaceManager.GetAllLocalBranches(_tempPath);
+        Assert.IsTrue(branches.Length > 1);
     }
 }

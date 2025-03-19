@@ -5,6 +5,7 @@ using Aiursoft.GitRunner.Models;
 using Aiursoft.GitRunner.Services;
 using Aiursoft.Scanner.Abstractions;
 using Microsoft.Extensions.Logging;
+
 // ReSharper disable InconsistentNaming
 
 namespace Aiursoft.GitRunner;
@@ -69,7 +70,7 @@ public class WorkspaceManager(
             throw;
         }
     }
-    
+
     public async Task<Commit[]> GetCommits(string path)
     {
         var commits = new List<Commit>();
@@ -87,7 +88,7 @@ public class WorkspaceManager(
             };
             commits.Add(commit);
         }
-        
+
         return commits.ToArray();
     }
 
@@ -123,12 +124,12 @@ public class WorkspaceManager(
     public async Task<string> GetRemoteUrl(string path)
     {
         var gitRemoteOutput = await gitCommandRunner.RunGit(path, "remote -v");
-        
+
         if (string.IsNullOrWhiteSpace(gitRemoteOutput))
         {
             return string.Empty;
         }
-        
+
         return gitRemoteOutput
             .Split('\n')
             .First(t => t.StartsWith("origin"))
@@ -137,12 +138,12 @@ public class WorkspaceManager(
             .First()
             .Trim();
     }
-    
+
     public async Task Init(string path)
     {
         await gitCommandRunner.RunGit(path, "init");
     }
-    
+
     public async Task AddAndCommit(string path, string message)
     {
         await gitCommandRunner.RunGit(path, "add .");
@@ -157,7 +158,7 @@ public class WorkspaceManager(
             await gitCommandRunner.RunGit(path, $@"commit -m ""{message}"" --author ""Aiursoft <nobody@domain.com>""");
         }
     }
-    
+
     public async Task<string> GetCurrentUserEmail(string path)
     {
         try
@@ -195,7 +196,7 @@ public class WorkspaceManager(
 
         await gitCommandRunner.RunGit(path, command);
     }
-    
+
     // ReSharper disable once MemberCanBePrivate.Global
     public async Task<bool> IsBareRepo(string path)
     {
@@ -221,7 +222,7 @@ public class WorkspaceManager(
             if (!string.Equals(remote, endPoint, StringComparison.OrdinalIgnoreCase))
             {
                 throw new GitCommandException(
-                    $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v", 
+                    $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v",
                     output: remote,
                     error: remote,
                     path);
@@ -260,7 +261,8 @@ public class WorkspaceManager(
             e.Message.Contains("unknown revision or path") ||
             e.Message.Contains($"is not a repository for {endPoint}"))
         {
-            logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path, e.Message);
+            logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path,
+                e.Message);
             FolderDeleter.DeleteByForce(path, true);
             await Clone(path, branch, endPoint, cloneMode);
         }
@@ -285,11 +287,11 @@ public class WorkspaceManager(
     public async Task SetUserConfig(string sourcePath, string username, string email)
     {
         await gitCommandRunner.RunGit(sourcePath, $"""
-                                                    config user.name "{username.Replace("\"", "\\\"")}"
-                                                    """);
+                                                   config user.name "{username.Replace("\"", "\\\"")}"
+                                                   """);
         await gitCommandRunner.RunGit(sourcePath, $"""
-                                                    config user.email "{email.Replace("\"", "\\\"")}"
-                                                    """);
+                                                   config user.email "{email.Replace("\"", "\\\"")}"
+                                                   """);
     }
 
     /// <summary>
@@ -328,7 +330,8 @@ public class WorkspaceManager(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Git push failed to {SourcePath}, branch {Branch}, endpoint {Endpoint}", sourcePath, branch, endpoint);
+            logger.LogWarning(ex, "Git push failed to {SourcePath}, branch {Branch}, endpoint {Endpoint}", sourcePath,
+                branch, endpoint);
             throw;
         }
     }
@@ -345,6 +348,12 @@ public class WorkspaceManager(
         return !clean;
     }
 
+    /// <summary>
+    /// Fetches updates from the remote repository for the specified Git repository path.
+    /// It includes a retry mechanism to handle potential failures.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <returns>A task representing the asynchronous fetch operation.</returns>
     public Task Fetch(string path)
     {
         return retryEngine.RunWithRetry(
@@ -357,5 +366,246 @@ public class WorkspaceManager(
                     return await workJob;
                 throw new TimeoutException("Git fetch job has exceeded the timeout and we have to retry it.");
             });
+    }
+
+    /// <summary>
+    /// Lists all branches available from the specified remote on the Git repository.
+    /// Removes the remote prefix from each branch name for clarity.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="remote">The name of the remote (default is "origin").</param>
+    /// <returns>An array of branch names from the remote.</returns>
+    public async Task<string[]> ListRemoteBranches(string path, string remote = "origin")
+    {
+        await Fetch(path);
+        var remoteOutput = await gitCommandRunner.RunGit(path, "branch -r");
+        return remoteOutput
+            .Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith($"{remote}/") && !line.Contains("->"))
+            .Select(line => line.Substring(remote.Length + 1))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Lists all local branches in the specified Git repository.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <returns>An array of local branch names.</returns>
+    public async Task<string[]> GetAllLocalBranches(string path)
+    {
+        var localOutput = await gitCommandRunner.RunGit(path, "branch --format=\"%(refname:short)\"");
+        return localOutput
+            .Split('\n')
+            .Select(line => line.Trim(' ', '"'))
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Deletes a local Git branch.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="branchName">The name of the branch to delete.</param>
+    /// <param name="force">Whether to force delete the branch (using -D).</param>
+    /// <returns>A task representing the asynchronous delete operation.</returns>
+    public async Task DeleteLocalBranch(string path, string branchName, bool force = false)
+    {
+        var flag = force ? "-D" : "-d";
+        logger.LogInformation("Deleting local branch {Branch} in {Path} with flag {Flag}.", branchName, path, flag);
+        await gitCommandRunner.RunGit(path, $"branch {flag} {branchName}");
+    }
+
+    /// <summary>
+    /// Deletes all local branches that do not exist on the specified remote repository.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="remote">The name of the remote (default is "origin").</param>
+    /// <returns>A task representing the asynchronous deletion operation.</returns>
+    public async Task DeleteLocalBranchesNotInRemote(string path, string remote = "origin")
+    {
+        var remoteBranches = await ListRemoteBranches(path, remote);
+        var localBranches = (await GetAllLocalBranches(path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var branch in localBranches)
+        {
+            if (!remoteBranches.Contains(branch))
+            {
+                logger.LogInformation("Deleting local branch {Branch} in {Path} because it does not exist on the remote.",
+                    branch, path);
+                try
+                {
+                    await DeleteLocalBranch(path, branch, true);
+                }
+                catch (GitCommandException ex)
+                {
+                    logger.LogWarning(ex, "Failed to delete branch {Branch} in {Path}", branch, path);
+                    throw;
+                }
+            }
+        }
+    }
+
+    public async Task CreateLocalBranchFromRemote(string path, string remote = "origin")
+    {
+        var remoteBranches = await ListRemoteBranches(path, remote);
+        var localBranches = (await GetAllLocalBranches(path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var branch in remoteBranches)
+        {
+            if (!localBranches.Contains(branch))
+            {
+                logger.LogInformation("Creating local branch {Branch} in {Path} because it does not exist locally.",
+                    branch, path);
+                try
+                {
+                    await gitCommandRunner.RunGit(path, $"checkout -b {branch}");
+                    await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}");
+                    // Set the upstream branch to the remote branch
+                    await gitCommandRunner.RunGit(path, $"branch --set-upstream-to={remote}/{branch} {branch}");
+                }
+                catch (GitCommandException ex)
+                {
+                    logger.LogWarning(ex, "Failed to create branch {Branch} in {Path}", branch, path);
+                    throw;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Mirrors all local branches to their corresponding remote branches by resetting to the remote state.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="remote">The name of the remote (default is "origin").</param>
+    /// <returns>A task representing the asynchronous mirroring operation.</returns>
+    public async Task EnsureAllLocalBranchesUpToDateWithRemote(string path, string remote = "origin")
+    {
+        await DeleteLocalBranchesNotInRemote(path, remote);
+        await CreateLocalBranchFromRemote(path, remote);
+
+        var localBranches = await GetAllLocalBranches(path);
+        foreach (var branch in localBranches)
+        {
+            try
+            {
+                await gitCommandRunner.RunGit(path, $"checkout {branch}");
+                await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}");
+                // We don't have to run `git pull` here because we already fetched the remote branches.
+            }
+            catch (GitCommandException ex)
+            {
+                logger.LogWarning(ex, "Failed to mirror branch {Branch} in {Path}", branch, path);
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Pushes all local branches and tags to the specified remote repository, with optional forced updates.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="remoteName">The name of the remote.</param>
+    /// <param name="force">Whether to force push changes (default is false).</param>
+    /// <returns>A task representing the asynchronous push operation.</returns>
+    public async Task PushAllBranchesAndTags(string path, string remoteName, bool force = false)
+    {
+        var forceArg = force ? "--force" : string.Empty;
+        await gitCommandRunner.RunGit(path, $"push {remoteName} --all {forceArg}");
+        await gitCommandRunner.RunGit(path, $"push {remoteName} --tags {forceArg}");
+    }
+
+    public async Task<string[]> GetRemoteNames(string path)
+    {
+        var remoteOutput = await gitCommandRunner.RunGit(path, "remote");
+        return remoteOutput
+            .Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToArray();
+    }
+
+    public async Task AddOrSetRemoteUrl(string path, string remoteName, string remoteUrl)
+    {
+        var remotes = await GetRemoteNames(path);
+        if (remotes.Contains(remoteName))
+        {
+            var currentRemoteUrl = await GetRemoteUrl(path, remoteName);
+            if (string.Equals(currentRemoteUrl, remoteUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogInformation("Remote {RemoteName} already exists with URL {RemoteUrl} in {Path}, skipping.",
+                    remoteName, remoteUrl, path);
+                return;
+            }
+
+            await SetRemoteUrl(path, remoteName, remoteUrl);
+        }
+        else
+        {
+            await AddRemote(path, remoteName, remoteUrl);
+        }
+    }
+
+    public async Task AddRemote(string path, string remoteName, string remoteUrl)
+    {
+        var existingRemotes = await GetRemoteNames(path);
+        if (existingRemotes.Contains(remoteName))
+        {
+            throw new GitCommandException(
+                message: $"Remote {remoteName} already exists in {path}.",
+                command: $"remote -v",
+                output: string.Empty,
+                error: string.Empty,
+                path);
+        }
+
+        logger.LogInformation("Adding remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, remoteUrl, path);
+        await gitCommandRunner.RunGit(path, $"remote add {remoteName} {remoteUrl}");
+    }
+
+    public async Task DeleteRemote(string path, string remoteName)
+    {
+        var existingRemotes = await GetRemoteNames(path);
+        if (!existingRemotes.Contains(remoteName))
+        {
+            throw new GitCommandException(
+                message: $"Remote {remoteName} does not exist in {path}.",
+                command: $"remote -v",
+                output: string.Empty,
+                error: string.Empty,
+                path);
+        }
+
+        logger.LogInformation("Deleting remote {RemoteName} in {Path}.", remoteName, path);
+        await gitCommandRunner.RunGit(path, $"remote remove {remoteName}");
+    }
+
+    public async Task<string> GetRemoteUrl(string path, string remoteName)
+    {
+        var remoteOutput = await gitCommandRunner.RunGit(path, $"remote get-url {remoteName}");
+        return remoteOutput.Trim();
+    }
+
+    /// <summary>
+    /// Sets the URL for the specified remote. Adds the remote if it does not exist.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
+    /// <param name="remoteName">The name of the remote.</param>
+    /// <param name="remoteUrl">The URL of the remote.</param>
+    /// <returns>A task representing the asynchronous operation to set or add the remote URL.</returns>
+    public async Task SetRemoteUrl(string path, string remoteName, string remoteUrl)
+    {
+        var localRemoteUrl = await GetRemoteNames(path);
+        if (!localRemoteUrl.Contains(remoteName))
+        {
+            throw new GitCommandException(
+                message: $"Remote {remoteName} does not exist in {path}.",
+                command: $"remote -v",
+                output: string.Empty,
+                error: string.Empty,
+                path);
+        }
+
+        logger.LogInformation("Setting remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, remoteUrl, path);
+        await gitCommandRunner.RunGit(path, $"remote set-url {remoteName} {remoteUrl}");
     }
 }
