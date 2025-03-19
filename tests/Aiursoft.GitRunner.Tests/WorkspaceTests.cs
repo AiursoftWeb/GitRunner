@@ -250,4 +250,31 @@ public class WorkspaceTests
         var branches = await workspaceManager.GetAllLocalBranches(_tempPath);
         Assert.IsTrue(branches.Length > 1);
     }
+
+    [TestMethod]
+    public async Task TestRemoteManagement()
+    {
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        await workspaceManager.Init(_tempPath!);
+        Assert.IsTrue(Directory.Exists(_tempPath));
+
+        // Get remotes (no remote)
+        var remotes = await workspaceManager.GetRemoteNames(_tempPath);
+        Assert.AreEqual(0, remotes.Length);
+
+        // Add a remote.
+        await workspaceManager.AddRemote(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        remotes = await workspaceManager.GetRemoteNames(_tempPath);
+        Assert.AreEqual(1, remotes.Length);
+
+        // Change the remote URL.
+        await workspaceManager.SetRemoteUrl(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        var newUrl = await workspaceManager.GetRemoteUrl(_tempPath, "origin");
+        Assert.AreEqual("https://gitlab.aiursoft.cn/anduin/anduinos.git", newUrl);
+
+        // Remove the remote.
+        await workspaceManager.DeleteRemote(_tempPath, "origin");
+        var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath);
+        Assert.AreEqual(0, remotesAfterDelete.Length);
+    }
 }
