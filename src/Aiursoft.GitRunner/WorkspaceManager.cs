@@ -116,29 +116,6 @@ public class WorkspaceManager(
         }
     }
 
-    /// <summary>
-    ///     Get remote origin's URL from a local git repo.
-    /// </summary>
-    /// <param name="path">Path.</param>
-    /// <returns>Remote URL.</returns>
-    public async Task<string> GetRemoteUrl(string path)
-    {
-        var gitRemoteOutput = await gitCommandRunner.RunGit(path, "remote -v");
-
-        if (string.IsNullOrWhiteSpace(gitRemoteOutput))
-        {
-            return string.Empty;
-        }
-
-        return gitRemoteOutput
-            .Split('\n')
-            .First(t => t.StartsWith("origin"))
-            .Substring(6)
-            .Split(' ')
-            .First()
-            .Trim();
-    }
-
     public async Task Init(string path)
     {
         await gitCommandRunner.RunGit(path, "init");
@@ -218,7 +195,7 @@ public class WorkspaceManager(
     {
         try
         {
-            var remote = await GetRemoteUrl(path);
+            var remote = await GetRemoteUrl(path, "origin");
             if (!string.Equals(remote, endPoint, StringComparison.OrdinalIgnoreCase))
             {
                 throw new GitCommandException(

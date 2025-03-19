@@ -82,7 +82,7 @@ public class WorkspaceTests
             CloneMode.Depth1);
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/manhours.git",
             CloneMode.Depth1);
-        var actualRemote = await workspaceManager.GetRemoteUrl(_tempPath!);
+        var actualRemote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/manhours.git", actualRemote);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
@@ -123,7 +123,7 @@ public class WorkspaceTests
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
-        var remote = await workspaceManager.GetRemoteUrl(_tempPath!);
+        var remote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/gitrunner.git", remote);
     }
 
@@ -166,7 +166,7 @@ public class WorkspaceTests
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.OnlyCommits);
-        var remote = await workspaceManager.GetRemoteUrl(_tempPath!);
+        var remote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
         Assert.AreEqual("https://gitlab.aiursoft.cn/aiursoft/gitrunner.git", remote);
     }
 
