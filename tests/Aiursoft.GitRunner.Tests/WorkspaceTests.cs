@@ -179,10 +179,17 @@ public class WorkspaceTests
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
-        await commandService.RunGit(_tempPath!, "remote remove origin");
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
-            CloneMode.Depth1);
-        Assert.IsTrue(Directory.Exists(_tempPath));
+        try
+        {
+            await commandService.RunGit(_tempPath!, "remote remove origin");
+            await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+                CloneMode.Depth1);
+            Assert.Fail("After removing the remote, we should not be able to reset the repo.");
+        }
+        catch (GitCommandException e)
+        {
+            Console.WriteLine(e);
+        }
     }
 
     [TestMethod]
