@@ -156,18 +156,30 @@ public class WorkspaceManager(
     /// <param name="branch">Init branch.</param>
     /// <param name="endPoint">Endpoint. Used for Git clone.</param>
     /// <param name="cloneMode">Clone mode</param>
+    /// <param name="personalAccessToken">Token for cloning private repos.</param>
     /// <returns>Task</returns>
-    public async Task Clone(string path, string? branch, string endPoint, CloneMode cloneMode)
+    public async Task Clone(string path, string? branch, string endPoint, CloneMode cloneMode, string? personalAccessToken = null)
     {
+        var authenticatedEndPoint = endPoint;
+
+        // 如果提供了 token 并且终结点是 HTTPS 协议，则将 token 注入 URL。
+        if (!string.IsNullOrWhiteSpace(personalAccessToken) &&
+            endPoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            // 格式: https://<token>@github.com/user/repo.git
+            authenticatedEndPoint = endPoint.Replace("https://", $"https://{personalAccessToken}@", StringComparison.OrdinalIgnoreCase);
+            logger.LogInformation("Using personal access token to clone from a private repository.");
+        }
+
         var branchArg = string.IsNullOrWhiteSpace(branch) ? string.Empty : $"-b {branch}";
         var command = cloneMode switch
         {
-            CloneMode.Full => $"clone {branchArg} {endPoint} .",
-            CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {endPoint} .",
-            CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {endPoint} .",
-            CloneMode.Depth1 => $"clone --depth=1 {branchArg} {endPoint} .",
-            CloneMode.Bare => $"clone --bare {branchArg} {endPoint} .",
-            CloneMode.BareWithOnlyCommits => $"clone --bare --filter=tree:0 {branchArg} {endPoint} .",
+            CloneMode.Full => $"clone {branchArg} {authenticatedEndPoint} .",
+            CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {authenticatedEndPoint} .",
+            CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {authenticatedEndPoint} .",
+            CloneMode.Depth1 => $"clone --depth=1 {branchArg} {authenticatedEndPoint} .",
+            CloneMode.Bare => $"clone --bare {branchArg} {authenticatedEndPoint} .",
+            CloneMode.BareWithOnlyCommits => $"clone --bare --filter=tree:0 {branchArg} {authenticatedEndPoint} .",
             _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
         };
 
@@ -190,13 +202,21 @@ public class WorkspaceManager(
     /// <param name="branch">Branch name</param>
     /// <param name="endPoint">Git clone endpoint.</param>
     /// <param name="cloneMode">Clone mode</param>
+    /// <param name="personalAccessToken">Optional PAT for cloning private repos.</param>
     /// <returns>Task</returns>
-    public async Task ResetRepo(string path, string? branch, string endPoint, CloneMode cloneMode)
+    public async Task ResetRepo(string path, string? branch, string endPoint, CloneMode cloneMode, string? personalAccessToken = null)
     {
         try
         {
             var remote = await GetRemoteUrl(path, "origin");
-            if (!string.Equals(remote, endPoint, StringComparison.OrdinalIgnoreCase))
+            // 如果本地的 remote URL 包含了认证信息, 先去除再比较
+            var remoteWithoutAuth = remote;
+            if (remote.Contains('@') && remote.StartsWith("https://"))
+            {
+                remoteWithoutAuth = "https://" + remote.Split('@')[1];
+            }
+
+            if (!string.Equals(remoteWithoutAuth, endPoint, StringComparison.OrdinalIgnoreCase))
             {
                 throw new GitCommandException(
                     $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v",
@@ -241,10 +261,10 @@ public class WorkspaceManager(
             logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path,
                 e.Message);
             FolderDeleter.DeleteByForce(path, true);
-            await Clone(path, branch, endPoint, cloneMode);
+            // 在这里将 token 传递给 Clone 函数
+            await Clone(path, branch, endPoint, cloneMode, personalAccessToken);
         }
     }
-
     /// <summary>
     ///     Do a commit. (With adding local changes)
     /// </summary>
