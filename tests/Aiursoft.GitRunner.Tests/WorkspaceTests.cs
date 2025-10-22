@@ -264,6 +264,7 @@ public class WorkspaceTests
     public async Task TestRemoteManagement()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
