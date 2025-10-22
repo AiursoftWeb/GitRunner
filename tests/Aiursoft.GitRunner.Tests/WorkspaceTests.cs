@@ -156,7 +156,7 @@ public class WorkspaceTests
             CloneMode.Full);
         var commits = await workspaceManager.GetCommits(_tempPath!);
         Assert.IsGreaterThan(8, commits.Length);
-        Assert.AreEqual(commits.Last().Message, "Initial commit");
+        Assert.AreEqual("Initial commit", commits.Last().Message);
     }
 
     [TestMethod]
@@ -195,6 +195,7 @@ public class WorkspaceTests
     public async Task TestCloneEditCommitThenPush()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
@@ -222,6 +223,7 @@ public class WorkspaceTests
     public async Task TestInitAddAndCommit()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
@@ -242,6 +244,7 @@ public class WorkspaceTests
     public async Task TestMirrorAllBranches()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
