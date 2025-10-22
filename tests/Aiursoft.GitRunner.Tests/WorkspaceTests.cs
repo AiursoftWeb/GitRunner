@@ -271,22 +271,22 @@ public class WorkspaceTests
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         // Get remotes (no remote)
-        var remotes = await workspaceManager.GetRemoteNames(_tempPath);
+        var remotes = await workspaceManager.GetRemoteNames(_tempPath!);
         Assert.IsEmpty(remotes);
 
         // Add a remote.
-        await workspaceManager.AddRemote(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
-        remotes = await workspaceManager.GetRemoteNames(_tempPath);
+        await workspaceManager.AddRemote(_tempPath!, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        remotes = await workspaceManager.GetRemoteNames(_tempPath!);
         Assert.HasCount(1, remotes);
 
         // Change the remote URL.
-        await workspaceManager.SetRemoteUrl(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
-        var newUrl = await workspaceManager.GetRemoteUrl(_tempPath, "origin");
+        await workspaceManager.SetRemoteUrl(_tempPath!, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        var newUrl = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
         Assert.AreEqual("https://gitlab.aiursoft.cn/anduin/anduinos.git", newUrl);
 
         // Remove the remote.
-        await workspaceManager.DeleteRemote(_tempPath, "origin");
-        var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath);
+        await workspaceManager.DeleteRemote(_tempPath!, "origin");
+        var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath!);
         Assert.IsEmpty(remotesAfterDelete);
     }
 }
