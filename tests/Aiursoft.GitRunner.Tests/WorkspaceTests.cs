@@ -4,7 +4,8 @@ using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.GitRunner.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+[assembly: DoNotParallelize]
 
 namespace Aiursoft.Canon.Tests;
 
@@ -134,7 +135,7 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.OnlyCommits);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
+        Assert.IsGreaterThan(8, commits.Length);
         Assert.IsTrue(commits[0] > commits[1]);
     }
 
@@ -145,7 +146,7 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
             CloneMode.Full);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
+        Assert.IsGreaterThan(8, commits.Length);
         Assert.IsTrue(commits[0] > commits[1]);
     }
 
@@ -156,8 +157,8 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
             CloneMode.Full);
         var commits = await workspaceManager.GetCommits(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
-        Assert.AreEqual(commits.Last().Message, "Initial commit");
+        Assert.IsGreaterThan(8, commits.Length);
+        Assert.AreEqual("Initial commit", commits.Last().Message);
     }
 
     [TestMethod]
@@ -196,26 +197,27 @@ public class WorkspaceTests
     public async Task TestCloneEditCommitThenPush()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
-        var readmePath = Path.Combine(_tempPath, "READMETest.md");
+        var readmePath = Path.Combine(_tempPath!, "READMETest.md");
         await File.WriteAllTextAsync(readmePath, "Hello world!");
-        var pendingCommit = await workspaceManager.PendingCommit(_tempPath);
+        var pendingCommit = await workspaceManager.PendingCommit(_tempPath!);
         Assert.IsTrue(pendingCommit);
-        await workspaceManager.SetUserConfig(_tempPath, "tester", "tester@dotnet");
-        var committed = await workspaceManager.CommitToBranch(_tempPath, "Test commit", "master");
+        await workspaceManager.SetUserConfig(_tempPath!, "tester", "tester@dotnet");
+        var committed = await workspaceManager.CommitToBranch(_tempPath!, "Test commit", "master");
         Assert.IsTrue(committed);
         try
         {
-            await workspaceManager.Push(_tempPath, "master", "https://bad/", true);
+            await workspaceManager.Push(_tempPath!, "master", "https://bad/", true);
             Assert.Fail();
         }
         catch (GitCommandException e)
         {
             Console.WriteLine(e);
-            Assert.IsTrue(e.Message.Contains("fatal: unable to access 'https://bad/': Could not resolve host: bad"));
+            Assert.Contains("fatal: unable to access 'https://bad/': Could not resolve host: bad", e.Message);
         }
     }
 
@@ -223,65 +225,68 @@ public class WorkspaceTests
     public async Task TestInitAddAndCommit()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         // Create a new file
-        var readmePath = Path.Combine(_tempPath, "README.md");
+        var readmePath = Path.Combine(_tempPath!, "README.md");
         await File.WriteAllTextAsync(readmePath, "Hello world!");
         Assert.IsTrue(File.Exists(readmePath));
 
         // Add the file and commit
-        await workspaceManager.AddAndCommit(_tempPath, "Add README.md");
+        await workspaceManager.AddAndCommit(_tempPath!, "Add README.md");
 
         // Check the commit
-        var commits = await workspaceManager.GetCommits(_tempPath);
-        Assert.AreEqual(1, commits.Length);
+        var commits = await workspaceManager.GetCommits(_tempPath!);
+        Assert.HasCount(1, commits);
     }
 
     [TestMethod]
     public async Task TestMirrorAllBranches()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         await workspaceManager.AddOrSetRemoteUrl(
-            path: _tempPath,
+            path: _tempPath!,
             remoteName: "origin",
             remoteUrl: "https://gitlab.aiursoft.cn/anduin/anduinos.git");
         await workspaceManager.EnsureAllLocalBranchesUpToDateWithRemote(
-            path: _tempPath,
+            path: _tempPath!,
             remote: "origin");
 
-        var branches = await workspaceManager.GetAllLocalBranches(_tempPath);
-        Assert.IsTrue(branches.Length > 1);
+        var branches = await workspaceManager.GetAllLocalBranches(_tempPath!);
+        Assert.IsGreaterThan(1, branches.Length);
     }
 
     [TestMethod]
     public async Task TestRemoteManagement()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        Assert.IsNotNull(_tempPath);
         await workspaceManager.Init(_tempPath!);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         // Get remotes (no remote)
-        var remotes = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(0, remotes.Length);
+        var remotes = await workspaceManager.GetRemoteNames(_tempPath!);
+        Assert.IsEmpty(remotes);
 
         // Add a remote.
-        await workspaceManager.AddRemote(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
-        remotes = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(1, remotes.Length);
+        await workspaceManager.AddRemote(_tempPath!, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        remotes = await workspaceManager.GetRemoteNames(_tempPath!);
+        Assert.HasCount(1, remotes);
 
         // Change the remote URL.
-        await workspaceManager.SetRemoteUrl(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
-        var newUrl = await workspaceManager.GetRemoteUrl(_tempPath, "origin");
+        await workspaceManager.SetRemoteUrl(_tempPath!, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
+        var newUrl = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
         Assert.AreEqual("https://gitlab.aiursoft.cn/anduin/anduinos.git", newUrl);
 
         // Remove the remote.
-        await workspaceManager.DeleteRemote(_tempPath, "origin");
-        var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(0, remotesAfterDelete.Length);
+        await workspaceManager.DeleteRemote(_tempPath!, "origin");
+        var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath!);
+        Assert.IsEmpty(remotesAfterDelete);
     }
 }
