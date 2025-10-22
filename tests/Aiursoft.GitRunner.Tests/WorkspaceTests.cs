@@ -5,6 +5,8 @@ using Aiursoft.GitRunner.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+[assembly: DoNotParallelize]
+
 namespace Aiursoft.Canon.Tests;
 
 [TestClass]
