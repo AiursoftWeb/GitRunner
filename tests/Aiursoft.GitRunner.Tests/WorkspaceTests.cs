@@ -133,7 +133,7 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
             CloneMode.OnlyCommits);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
+        Assert.IsGreaterThan(8, commits.Length);
         Assert.IsTrue(commits[0] > commits[1]);
     }
 
@@ -144,7 +144,7 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
             CloneMode.Full);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
+        Assert.IsGreaterThan(8, commits.Length);
         Assert.IsTrue(commits[0] > commits[1]);
     }
 
@@ -155,7 +155,7 @@ public class WorkspaceTests
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/ediwang/elf.git",
             CloneMode.Full);
         var commits = await workspaceManager.GetCommits(_tempPath!);
-        Assert.IsTrue(commits.Length > 8);
+        Assert.IsGreaterThan(8, commits.Length);
         Assert.AreEqual(commits.Last().Message, "Initial commit");
     }
 
@@ -214,7 +214,7 @@ public class WorkspaceTests
         catch (GitCommandException e)
         {
             Console.WriteLine(e);
-            Assert.IsTrue(e.Message.Contains("fatal: unable to access 'https://bad/': Could not resolve host: bad"));
+            Assert.Contains("fatal: unable to access 'https://bad/': Could not resolve host: bad", e.Message);
         }
     }
 
@@ -235,7 +235,7 @@ public class WorkspaceTests
 
         // Check the commit
         var commits = await workspaceManager.GetCommits(_tempPath);
-        Assert.AreEqual(1, commits.Length);
+        Assert.HasCount(1, commits);
     }
 
     [TestMethod]
@@ -254,7 +254,7 @@ public class WorkspaceTests
             remote: "origin");
 
         var branches = await workspaceManager.GetAllLocalBranches(_tempPath);
-        Assert.IsTrue(branches.Length > 1);
+        Assert.IsGreaterThan(1, branches.Length);
     }
 
     [TestMethod]
@@ -266,12 +266,12 @@ public class WorkspaceTests
 
         // Get remotes (no remote)
         var remotes = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(0, remotes.Length);
+        Assert.IsEmpty(remotes);
 
         // Add a remote.
         await workspaceManager.AddRemote(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
         remotes = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(1, remotes.Length);
+        Assert.HasCount(1, remotes);
 
         // Change the remote URL.
         await workspaceManager.SetRemoteUrl(_tempPath, "origin", "https://gitlab.aiursoft.cn/anduin/anduinos.git");
@@ -281,6 +281,6 @@ public class WorkspaceTests
         // Remove the remote.
         await workspaceManager.DeleteRemote(_tempPath, "origin");
         var remotesAfterDelete = await workspaceManager.GetRemoteNames(_tempPath);
-        Assert.AreEqual(0, remotesAfterDelete.Length);
+        Assert.IsEmpty(remotesAfterDelete);
     }
 }
