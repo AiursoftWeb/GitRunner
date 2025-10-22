@@ -4,7 +4,6 @@ using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.GitRunner.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aiursoft.Canon.Tests;
 
