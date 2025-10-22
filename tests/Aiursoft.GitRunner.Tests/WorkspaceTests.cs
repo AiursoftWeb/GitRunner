@@ -202,16 +202,16 @@ public class WorkspaceTests
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
-        var readmePath = Path.Combine(_tempPath, "READMETest.md");
+        var readmePath = Path.Combine(_tempPath!, "READMETest.md");
         await File.WriteAllTextAsync(readmePath, "Hello world!");
-        var pendingCommit = await workspaceManager.PendingCommit(_tempPath);
+        var pendingCommit = await workspaceManager.PendingCommit(_tempPath!);
         Assert.IsTrue(pendingCommit);
-        await workspaceManager.SetUserConfig(_tempPath, "tester", "tester@dotnet");
-        var committed = await workspaceManager.CommitToBranch(_tempPath, "Test commit", "master");
+        await workspaceManager.SetUserConfig(_tempPath!, "tester", "tester@dotnet");
+        var committed = await workspaceManager.CommitToBranch(_tempPath!, "Test commit", "master");
         Assert.IsTrue(committed);
         try
         {
-            await workspaceManager.Push(_tempPath, "master", "https://bad/", true);
+            await workspaceManager.Push(_tempPath!, "master", "https://bad/", true);
             Assert.Fail();
         }
         catch (GitCommandException e)
@@ -230,15 +230,15 @@ public class WorkspaceTests
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         // Create a new file
-        var readmePath = Path.Combine(_tempPath, "README.md");
+        var readmePath = Path.Combine(_tempPath!, "README.md");
         await File.WriteAllTextAsync(readmePath, "Hello world!");
         Assert.IsTrue(File.Exists(readmePath));
 
         // Add the file and commit
-        await workspaceManager.AddAndCommit(_tempPath, "Add README.md");
+        await workspaceManager.AddAndCommit(_tempPath!, "Add README.md");
 
         // Check the commit
-        var commits = await workspaceManager.GetCommits(_tempPath);
+        var commits = await workspaceManager.GetCommits(_tempPath!);
         Assert.HasCount(1, commits);
     }
 
@@ -251,14 +251,14 @@ public class WorkspaceTests
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         await workspaceManager.AddOrSetRemoteUrl(
-            path: _tempPath,
+            path: _tempPath!,
             remoteName: "origin",
             remoteUrl: "https://gitlab.aiursoft.cn/anduin/anduinos.git");
         await workspaceManager.EnsureAllLocalBranchesUpToDateWithRemote(
-            path: _tempPath,
+            path: _tempPath!,
             remote: "origin");
 
-        var branches = await workspaceManager.GetAllLocalBranches(_tempPath);
+        var branches = await workspaceManager.GetAllLocalBranches(_tempPath!);
         Assert.IsGreaterThan(1, branches.Length);
     }
 
