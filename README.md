@@ -1,10 +1,10 @@
 # GitRunner
 
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/blob/master/LICENSE)
-[![Pipeline stat](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/pipelines)
-[![Test Coverage](https://gitlab.aiursoft.cn/aiursoft/gitrunner/badges/master/coverage.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/pipelines)
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/blob/master/LICENSE)
+[![Pipeline stat](https://gitlab.aiursoft.com/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/pipelines)
+[![Test Coverage](https://gitlab.aiursoft.com/aiursoft/gitrunner/badges/master/coverage.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/pipelines)
 [![NuGet version (Aiursoft.GitRunner)](https://img.shields.io/nuget/v/Aiursoft.gitrunner.svg)](https://www.nuget.org/packages/Aiursoft.gitrunner/)
-[![ManHours](https://manhours.aiursoft.cn/r/gitlab.aiursoft.cn/aiursoft/gitrunner.svg)](https://gitlab.aiursoft.cn/aiursoft/gitrunner/-/commits/master?ref_type=heads)
+[![ManHours](https://manhours.aiursoft.cn/r/gitlab.aiursoft.com/aiursoft/gitrunner.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/commits/master?ref_type=heads)
 
 GitRunner is a tool to help you run git commands in C#.
 
@@ -32,11 +32,11 @@ var workspaceManager = serviceProvider.GetRequiredService<WorkspaceManager>();
 await workspaceManager.Clone(
     repoPath, 
     "master", 
-    "https://gitlab.aiursoft.cn/aiursoft/gitrunner.git",
+    "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
     mode);
 
 var branch = await workspaceManager.GetBranch(repoPath); // master
-var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://gitlab.aiursoft.cn/aiursoft/gitrunner.git
+var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://gitlab.aiursoft.com/aiursoft/gitrunner.git
 ```
 
 ## API Overview
