@@ -194,6 +194,52 @@ public class WorkspaceTests
     }
 
     [TestMethod]
+    public async Task TestFetchTimeoutKillsGitProcessTreeBeforeRetry()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("This process-tree regression test uses a POSIX shell script.");
+            return;
+        }
+
+        var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        var commandRunner = _serviceProvider!.GetRequiredService<GitRunner.Services.GitCommandRunner>();
+        var remotePath = Path.Combine(Path.GetTempPath(), "GitRunnerRemote_" + Guid.NewGuid());
+        var uploadPackScript = Path.Combine(_tempPath!, "slow-upload-pack.sh");
+        var childMarkerPath = Path.Combine(_tempPath!, "child-survived");
+
+        Directory.CreateDirectory(remotePath);
+        try
+        {
+            await commandRunner.RunGit(remotePath, "init --bare");
+            await workspaceManager.Init(_tempPath!);
+            await commandRunner.RunGit(_tempPath!, $"remote add origin {remotePath}");
+
+            await File.WriteAllTextAsync(
+                uploadPackScript,
+                $"#!/bin/sh\n(sleep 1; touch \"{childMarkerPath}\") &\nwait\n");
+            File.SetUnixFileMode(
+                uploadPackScript,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            await commandRunner.RunGit(_tempPath!, $"config remote.origin.uploadpack {uploadPackScript}");
+
+            await Assert.ThrowsExactlyAsync<TimeoutException>(async () =>
+            {
+                await workspaceManager.Fetch(_tempPath!, TimeSpan.FromMilliseconds(100));
+            });
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            Assert.IsFalse(
+                File.Exists(childMarkerPath),
+                "A git upload-pack child survived a timed-out fetch attempt.");
+        }
+        finally
+        {
+            FolderDeleter.DeleteByForce(remotePath);
+        }
+    }
+
+    [TestMethod]
     public async Task TestCloneEditCommitThenPush()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();

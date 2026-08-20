@@ -350,19 +350,15 @@ public class WorkspaceManager(
     /// It includes a retry mechanism to handle potential failures.
     /// </summary>
     /// <param name="path">The path of the Git repository.</param>
+    /// <param name="timeout">Optional timeout for each fetch attempt.</param>
     /// <returns>A task representing the asynchronous fetch operation.</returns>
-    public Task Fetch(string path)
+    public Task Fetch(string path, TimeSpan? timeout = null)
     {
         return retryEngine.RunWithRetry(
-            async attempt =>
-            {
-                var workJob = gitCommandRunner.RunGit(path, "fetch --verbose");
-                var waitJob = Task.Delay(TimeSpan.FromSeconds(attempt * 50));
-                await Task.WhenAny(workJob, waitJob);
-                if (workJob.IsCompleted)
-                    return await workJob;
-                throw new TimeoutException("Git fetch job has exceeded the timeout and we have to retry it.");
-            });
+            attempt => gitCommandRunner.RunGit(
+                path,
+                "fetch --verbose",
+                timeout ?? TimeSpan.FromSeconds(attempt * 50)));
     }
 
     /// <summary>
