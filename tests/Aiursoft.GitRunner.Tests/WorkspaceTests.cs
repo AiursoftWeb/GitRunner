@@ -240,6 +240,15 @@ public class WorkspaceTests
     }
 
     [TestMethod]
+    public void FetchKeepsBinaryCompatibleOverloads()
+    {
+        Assert.IsNotNull(typeof(WorkspaceManager).GetMethod(nameof(WorkspaceManager.Fetch), [typeof(string)]));
+        Assert.IsNotNull(typeof(WorkspaceManager).GetMethod(
+            nameof(WorkspaceManager.Fetch),
+            [typeof(string), typeof(TimeSpan?)]));
+    }
+
+    [TestMethod]
     public async Task TestCloneEditCommitThenPush()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();

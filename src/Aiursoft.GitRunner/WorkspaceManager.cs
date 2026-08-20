@@ -350,9 +350,20 @@ public class WorkspaceManager(
     /// It includes a retry mechanism to handle potential failures.
     /// </summary>
     /// <param name="path">The path of the Git repository.</param>
+    /// <returns>A task representing the asynchronous fetch operation.</returns>
+    public Task Fetch(string path)
+    {
+        return Fetch(path, timeout: null);
+    }
+
+    /// <summary>
+    /// Fetches updates from the remote repository for the specified Git repository path.
+    /// It includes a retry mechanism to handle potential failures.
+    /// </summary>
+    /// <param name="path">The path of the Git repository.</param>
     /// <param name="timeout">Optional timeout for each fetch attempt.</param>
     /// <returns>A task representing the asynchronous fetch operation.</returns>
-    public Task Fetch(string path, TimeSpan? timeout = null)
+    public Task Fetch(string path, TimeSpan? timeout)
     {
         return retryEngine.RunWithRetry(
             attempt => gitCommandRunner.RunGit(
