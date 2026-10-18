@@ -1,4 +1,5 @@
-﻿using Aiursoft.CSTools.Tools;
+﻿using System.Text;
+using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.GitRunner.Models;
@@ -302,6 +303,108 @@ public class WorkspaceTests
         Assert.IsNull(Environment.GetEnvironmentVariable("GITRUNNER_TEST_CREDENTIAL"));
         var config = await File.ReadAllTextAsync(Path.Combine(cache, ".git", "config"));
         Assert.DoesNotContain("test-source-token", config);
+    }
+
+    [TestMethod]
+    [DataRow(CloneMode.Full)]
+    [DataRow(CloneMode.Bare)]
+    public async Task ResetRepoUsesCurrentCredentialsAfterRotation(CloneMode mode)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("This authenticated transport regression uses a POSIX Git wrapper.");
+            return;
+        }
+
+        const string endpoint = "https://rotation.example.test/repository.git";
+        const string oldToken = "expired-token-a";
+        var previousGlobalConfig = Environment.GetEnvironmentVariable("GIT_CONFIG_GLOBAL");
+        var previousAuthentication = Environment.GetEnvironmentVariable("GIT_CONFIG_VALUE_3");
+        var globalConfig = Path.Combine(_tempPath!, "isolated.gitconfig");
+        var source = Path.Combine(_tempPath!, "source");
+        var cache = Path.Combine(_tempPath!, "cache");
+        var fresh = Path.Combine(_tempPath!, "fresh");
+        var expectedHeader = Path.Combine(_tempPath!, "expected-header");
+        var toolsPath = Path.Combine(_tempPath!, "tools");
+        var gitWrapper = Path.Combine(toolsPath, "git");
+        var previousPath = Environment.GetEnvironmentVariable("PATH");
+        var realGit = previousPath!.Split(Path.PathSeparator).Select(folder => Path.Combine(folder, "git")).First(File.Exists);
+        var accepted = Path.Combine(_tempPath!, "accepted-requests");
+        var logs = new CredentialLogCapture();
+        using var services = new ServiceCollection()
+            .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs))
+            .AddGitRunner()
+            .BuildServiceProvider();
+        var workspace = services.GetRequiredService<WorkspaceManager>();
+        var runner = services.GetRequiredService<GitRunner.Services.GitCommandRunner>();
+        try
+        {
+            await File.WriteAllTextAsync(globalConfig, string.Empty);
+            Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", globalConfig);
+            Directory.CreateDirectory(source);
+            Directory.CreateDirectory(cache);
+            Directory.CreateDirectory(fresh);
+            await runner.RunGit(source, "init --initial-branch=master");
+            await workspace.SetUserConfig(source, "Tester", "tester@example.test");
+            await File.WriteAllTextAsync(Path.Combine(source, "README.md"), "Initial");
+            await runner.RunGit(source, "add .");
+            await runner.RunGit(source, "-c commit.gpgsign=false commit -m Initial");
+            await workspace.Clone(cache, "master", source, mode);
+            await runner.RunGit(cache, $"remote set-url origin https://bot:{oldToken}@rotation.example.test/repository.git");
+
+            var sourceUrl = new Uri(source + Path.DirectorySeparatorChar).AbsoluteUri.TrimEnd('/');
+            await runner.RunGit(source, $"config --file \"{globalConfig}\" url.\"{sourceUrl}\".insteadOf {endpoint}");
+            // Authenticate clone/fetch at the client boundary, then execute the real Git transfer.
+            Directory.CreateDirectory(toolsPath);
+            await File.WriteAllTextAsync(gitWrapper,
+                "#!/bin/sh\ncase \" $* \" in\n*' fetch '*|*' clone '*)\n" +
+                $"actual=$('{realGit}' config --get-urlmatch http.extraHeader '{endpoint}')\n" +
+                $"[ \"$actual\" = \"$(cat '{expectedHeader}')\" ] || exit 1\n" +
+                $"echo accepted >> '{accepted}'\n;;\nesac\nexec '{realGit}' \"$@\"\n");
+            File.SetUnixFileMode(gitWrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Environment.SetEnvironmentVariable("PATH", toolsPath + Path.PathSeparator + previousPath);
+
+            foreach (var token in new[] { "current-token-b", "current-token-c" })
+            {
+                var header = "Authorization: Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("bot:" + token));
+                await File.WriteAllTextAsync(expectedHeader, header);
+                await File.WriteAllTextAsync(Path.Combine(source, "README.md"), token);
+                await runner.RunGit(source, "add .");
+                await runner.RunGit(source, "-c commit.gpgsign=false commit -m Update");
+                await workspace.ResetRepo(cache, "master", endpoint, mode, "bot:" + token);
+                Assert.AreEqual(await runner.RunGit(source, "rev-parse HEAD"), await runner.RunGit(cache, "rev-parse HEAD"));
+                var configPath = mode == CloneMode.Bare ? Path.Combine(cache, "config") : Path.Combine(cache, ".git", "config");
+                var config = await File.ReadAllTextAsync(configPath);
+                Assert.Contains(oldToken, config, "The existing working copy must be reused, rather than recloned.");
+                Assert.DoesNotContain(token, config);
+                Assert.DoesNotContain(header, config);
+                Assert.IsFalse(logs.Messages.Any(message => message.Contains(token) || message.Contains(header) || message.Contains(oldToken)));
+            }
+
+            Assert.HasCount(2, await File.ReadAllLinesAsync(accepted));
+            await workspace.Clone(fresh, "master", endpoint, mode, "bot:current-token-c");
+            Assert.AreEqual(await runner.RunGit(source, "rev-parse HEAD"), await runner.RunGit(fresh, "rev-parse HEAD"));
+            var freshConfig = await File.ReadAllTextAsync(mode == CloneMode.Bare
+                ? Path.Combine(fresh, "config") : Path.Combine(fresh, ".git", "config"));
+            Assert.DoesNotContain("current-token-c", freshConfig);
+            Assert.AreEqual(previousAuthentication, Environment.GetEnvironmentVariable("GIT_CONFIG_VALUE_3"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", previousGlobalConfig);
+            Environment.SetEnvironmentVariable("PATH", previousPath);
+        }
+    }
+
+    private sealed class CredentialLogCapture : ILoggerProvider, ILogger
+    {
+        public List<string> Messages { get; } = [];
+        public ILogger CreateLogger(string categoryName) => this;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public void Dispose() { }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 
     [TestMethod]

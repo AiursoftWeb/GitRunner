@@ -1,4 +1,5 @@
-﻿using Aiursoft.Canon;
+﻿using System.Text;
+using Aiursoft.Canon;
 using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.GitRunner.Models;
@@ -160,30 +161,62 @@ public class WorkspaceManager(
     /// <returns>Task</returns>
     public async Task Clone(string path, string? branch, string endPoint, CloneMode cloneMode, string? personalAccessToken = null)
     {
-        var authenticatedEndPoint = endPoint;
-
-        // 如果提供了 token 并且终结点是 HTTPS 协议，则将 token 注入 URL。
-        if (!string.IsNullOrWhiteSpace(personalAccessToken) &&
-            endPoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            // 格式: https://<token>@github.com/user/repo.git
-            authenticatedEndPoint = endPoint.Replace("https://", $"https://{personalAccessToken}@", StringComparison.OrdinalIgnoreCase);
-            logger.LogInformation("Using personal access token to clone from a private repository.");
-        }
+        var authentication = CreateAuthenticationEnvironment(endPoint, personalAccessToken);
+        var cloneEndpoint = authentication == null ? endPoint : RemoveHttpsCredentials(endPoint);
 
         var branchArg = string.IsNullOrWhiteSpace(branch) ? string.Empty : $"-b {branch}";
         var command = cloneMode switch
         {
-            CloneMode.Full => $"clone {branchArg} {authenticatedEndPoint} .",
-            CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {authenticatedEndPoint} .",
-            CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {authenticatedEndPoint} .",
-            CloneMode.Depth1 => $"clone --depth=1 {branchArg} {authenticatedEndPoint} .",
-            CloneMode.Bare => $"clone --bare {branchArg} {authenticatedEndPoint} .",
-            CloneMode.BareWithOnlyCommits => $"clone --bare --filter=tree:0 {branchArg} {authenticatedEndPoint} .",
+            CloneMode.Full => $"clone {branchArg} {cloneEndpoint} .",
+            CloneMode.OnlyCommits => $"clone --filter=tree:0 {branchArg} {cloneEndpoint} .",
+            CloneMode.CommitsAndTrees => $"clone --filter=blob:none {branchArg} {cloneEndpoint} .",
+            CloneMode.Depth1 => $"clone --depth=1 {branchArg} {cloneEndpoint} .",
+            CloneMode.Bare => $"clone --bare {branchArg} {cloneEndpoint} .",
+            CloneMode.BareWithOnlyCommits => $"clone --bare --filter=tree:0 {branchArg} {cloneEndpoint} .",
             _ => throw new NotSupportedException($"Clone mode {cloneMode} is not supported.")
         };
 
-        await gitCommandRunner.RunGit(path, command);
+        await gitCommandRunner.RunGit(path, command, null, true, authentication);
+    }
+
+    private static string RemoveHttpsCredentials(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps || string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return endpoint;
+        }
+
+        return new UriBuilder(uri) { UserName = string.Empty, Password = string.Empty }.Uri.AbsoluteUri;
+    }
+
+    private static Dictionary<string, string?>? CreateAuthenticationEnvironment(string endpoint, string? credential)
+    {
+        if (string.IsNullOrWhiteSpace(credential) ||
+            !Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return null;
+        }
+
+        var cleanEndpoint = RemoveHttpsCredentials(endpoint);
+        // Preserve both existing user:password and token-as-username callers.
+        var basicCredential = credential.Contains(':') ? credential : credential + ":";
+        var basicAuth = Convert.ToBase64String(Encoding.UTF8.GetBytes(basicCredential));
+        return new Dictionary<string, string?>
+        {
+            ["GIT_CONFIG_COUNT"] = "5",
+            // Remote URLs are multi-valued: clear cached entries before supplying the current URL.
+            ["GIT_CONFIG_KEY_0"] = "remote.origin.url",
+            ["GIT_CONFIG_VALUE_0"] = string.Empty,
+            ["GIT_CONFIG_KEY_1"] = "remote.origin.url",
+            ["GIT_CONFIG_VALUE_1"] = cleanEndpoint,
+            ["GIT_CONFIG_KEY_2"] = "credential.helper",
+            ["GIT_CONFIG_VALUE_2"] = string.Empty,
+            ["GIT_CONFIG_KEY_3"] = $"http.{cleanEndpoint}.extraHeader",
+            ["GIT_CONFIG_VALUE_3"] = $"Authorization: Basic {basicAuth}",
+            ["GIT_CONFIG_KEY_4"] = $"http.{cleanEndpoint}.followRedirects",
+            ["GIT_CONFIG_VALUE_4"] = "false"
+        };
     }
 
     // ReSharper disable once MemberCanBePrivate.Global
@@ -206,22 +239,18 @@ public class WorkspaceManager(
     /// <returns>Task</returns>
     public async Task ResetRepo(string path, string? branch, string endPoint, CloneMode cloneMode, string? personalAccessToken = null)
     {
+        var authentication = CreateAuthenticationEnvironment(endPoint, personalAccessToken);
+        var expectedEndpoint = RemoveHttpsCredentials(endPoint);
         try
         {
-            var remote = await GetRemoteUrl(path, "origin");
-            // 如果本地的 remote URL 包含了认证信息, 先去除再比较
-            var remoteWithoutAuth = remote;
-            if (remote.Contains('@') && remote.StartsWith("https://"))
-            {
-                remoteWithoutAuth = "https://" + remote.Split('@')[1];
-            }
+            var remoteWithoutAuth = RemoveHttpsCredentials(await GetRemoteUrl(path, "origin"));
 
-            if (!string.Equals(remoteWithoutAuth, endPoint, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(remoteWithoutAuth, expectedEndpoint, StringComparison.OrdinalIgnoreCase))
             {
                 throw new GitCommandException(
-                    $"The repository with remote: '{remote}' is not a repository for {endPoint}.", "remote -v",
-                    output: remote,
-                    error: remote,
+                    $"The repository with remote: '{remoteWithoutAuth}' is not a repository for {expectedEndpoint}.", "remote -v",
+                    output: remoteWithoutAuth,
+                    error: remoteWithoutAuth,
                     path);
             }
 
@@ -229,7 +258,7 @@ public class WorkspaceManager(
             {
                 logger.LogTrace("The repo at {Path} is a bare repo. We will fetch it.", path);
                 var currentBranch = await GetBranch(path);
-                await gitCommandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}");
+                await gitCommandRunner.RunGit(path, $"fetch origin {currentBranch}:{currentBranch}", null, true, authentication);
             }
             else
             {
@@ -242,7 +271,7 @@ public class WorkspaceManager(
                     await SwitchToBranch(path, branch, false);
                 }
 
-                await Fetch(path);
+                await Fetch(path, null, authentication);
                 if (!string.IsNullOrWhiteSpace(branch))
                 {
                     await gitCommandRunner.RunGit(path, $"reset --hard origin/{branch}");
@@ -256,12 +285,11 @@ public class WorkspaceManager(
         catch (GitCommandException e) when (
             e.Message.Contains("not a git repository") ||
             e.Message.Contains("unknown revision or path") ||
-            e.Message.Contains($"is not a repository for {endPoint}"))
+            e.Message.Contains($"is not a repository for {expectedEndpoint}"))
         {
             logger.LogInformation("The repo at {Path} is not a git repo because {Message}. We will clone it.", path,
                 e.Message);
             FolderDeleter.DeleteByForce(path, true);
-            // 在这里将 token 传递给 Clone 函数
             await Clone(path, branch, endPoint, cloneMode, personalAccessToken);
         }
     }
