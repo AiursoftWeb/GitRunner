@@ -277,6 +277,44 @@ public class WorkspaceTests
     }
 
     [TestMethod]
+    [DataRow("repo")]
+    [DataRow("repo with spaces")]
+    public async Task GetCommitsSupportsConcurrentReadersWhileGlobalConfigIsLocked(string directoryName)
+    {
+        var previousConfig = Environment.GetEnvironmentVariable("GIT_CONFIG_GLOBAL");
+        var configPath = Path.Combine(_tempPath!, "isolated.gitconfig");
+        var repoPath = Path.Combine(_tempPath!, directoryName);
+        Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", configPath);
+        try
+        {
+            Directory.CreateDirectory(repoPath);
+            var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+            var commandRunner = _serviceProvider!.GetRequiredService<GitRunner.Services.GitCommandRunner>();
+            await commandRunner.RunGit(repoPath, "init", setSafeDirectoryFirst: false);
+            await commandRunner.RunGit(repoPath, "config user.name Tester", setSafeDirectoryFirst: false);
+            await commandRunner.RunGit(repoPath, "config user.email tester@example.test", setSafeDirectoryFirst: false);
+            await File.WriteAllTextAsync(Path.Combine(repoPath, "README.md"), "Concurrent readers");
+            await commandRunner.RunGit(repoPath, "add README.md", setSafeDirectoryFirst: false);
+            await commandRunner.RunGit(repoPath, "-c commit.gpgsign=false commit -m \"Initial commit\"", setSafeDirectoryFirst: false);
+            await File.WriteAllTextAsync(configPath + ".lock", "Another Git process owns this lock.");
+
+            var results = await Task.WhenAll(Enumerable.Range(0, 32)
+                .Select(_ => workspaceManager.GetCommits(repoPath)));
+
+            foreach (var commits in results)
+            {
+                Assert.HasCount(1, commits);
+                Assert.AreEqual("Initial commit", commits[0].Message);
+                Assert.AreEqual(results[0][0].Hash, commits[0].Hash);
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", previousConfig);
+        }
+    }
+
+    [TestMethod]
     public async Task TestInitAddAndCommit()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();

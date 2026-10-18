@@ -29,10 +29,16 @@ public class GitCommandRunner : ITransientDependency
     /// <returns>Task</returns>
     public async Task<string> RunGit(string path, string arguments, TimeSpan? timeout = null, bool setSafeDirectoryFirst = true)
     {
+        IDictionary<string, string?>? environmentVariables = null;
+        var commandArguments = arguments;
         if (setSafeDirectoryFirst)
         {
-            // git config --global --add safe.directory path
-            await RunGit(path, "config --global --add safe.directory " + path, timeout, false);
+            // Scope trust to this command without writing the shared global config.
+            environmentVariables = new Dictionary<string, string?>
+            {
+                ["AIURSOFT_GITRUNNER_SAFE_DIRECTORY"] = Path.GetFullPath(path)
+            };
+            commandArguments = "--config-env=safe.directory=AIURSOFT_GITRUNNER_SAFE_DIRECTORY " + arguments;
         }
         
         string output;
@@ -42,9 +48,10 @@ public class GitCommandRunner : ITransientDependency
             _logger.LogTrace("Running git command {Command} at {Path}", arguments, path);
             (var exitCode, output, error) = await _commandService.RunCommandAsync(
                 bin: "git", 
-                arg:arguments,
+                arg:commandArguments,
                 path: path,
-                timeout: timeout);
+                timeout: timeout,
+                environmentVariables: environmentVariables);
             
             if (
                 output.Contains("'git-lfs' was not found") ||
