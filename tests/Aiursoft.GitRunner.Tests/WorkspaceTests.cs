@@ -81,10 +81,10 @@ public class WorkspaceTests
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
             CloneMode.Depth1);
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/manhours.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/manhours.git",
             CloneMode.Depth1);
         var actualRemote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
-        Assert.AreEqual("https://gitlab.aiursoft.com/aiursoft/manhours.git", actualRemote);
+        Assert.AreEqual("https://github.com/AiursoftWeb/manhours.git", actualRemote);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
 
