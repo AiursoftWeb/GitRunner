@@ -27,17 +27,23 @@ public class GitCommandRunner : ITransientDependency
     /// <param name="timeout">timeout</param>
     /// <param name="setSafeDirectoryFirst">setSafeDirectoryFirst</param>
     /// <returns>Task</returns>
-    public async Task<string> RunGit(string path, string arguments, TimeSpan? timeout = null, bool setSafeDirectoryFirst = true)
+    public Task<string> RunGit(string path, string arguments, TimeSpan? timeout = null, bool setSafeDirectoryFirst = true)
     {
-        IDictionary<string, string?>? environmentVariables = null;
+        return RunGit(path, arguments, timeout, setSafeDirectoryFirst, null);
+    }
+
+    public async Task<string> RunGit(string path, string arguments, TimeSpan? timeout,
+        bool setSafeDirectoryFirst, IDictionary<string, string?>? environmentVariables)
+    {
+        // Copy per-command settings so adding safe.directory never mutates the caller's credentials.
+        var commandEnvironment = environmentVariables == null
+            ? new Dictionary<string, string?>()
+            : new Dictionary<string, string?>(environmentVariables);
         var commandArguments = arguments;
         if (setSafeDirectoryFirst)
         {
             // Scope trust to this command without writing the shared global config.
-            environmentVariables = new Dictionary<string, string?>
-            {
-                ["AIURSOFT_GITRUNNER_SAFE_DIRECTORY"] = Path.GetFullPath(path)
-            };
+            commandEnvironment["AIURSOFT_GITRUNNER_SAFE_DIRECTORY"] = Path.GetFullPath(path);
             commandArguments = "--config-env=safe.directory=AIURSOFT_GITRUNNER_SAFE_DIRECTORY " + arguments;
         }
         
@@ -51,7 +57,7 @@ public class GitCommandRunner : ITransientDependency
                 arg:commandArguments,
                 path: path,
                 timeout: timeout,
-                environmentVariables: environmentVariables);
+                environmentVariables: commandEnvironment);
             
             if (
                 output.Contains("'git-lfs' was not found") ||

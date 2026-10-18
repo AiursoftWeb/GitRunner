@@ -240,6 +240,71 @@ public class WorkspaceTests
     }
 
     [TestMethod]
+    public async Task TestAuthenticatedBranchSynchronizationAndPush()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("This authenticated transport regression uses a POSIX upload-pack script.");
+            return;
+        }
+
+        var workspace = _serviceProvider!.GetRequiredService<WorkspaceManager>();
+        var runner = _serviceProvider!.GetRequiredService<GitRunner.Services.GitCommandRunner>();
+        var source = Path.Combine(_tempPath!, "source");
+        var cache = Path.Combine(_tempPath!, "cache");
+        var target = Path.Combine(_tempPath!, "target.git");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(cache);
+        Directory.CreateDirectory(target);
+        await runner.RunGit(source, "init --initial-branch=master");
+        await workspace.SetUserConfig(source, "Tester", "tester@example.test");
+        await File.WriteAllTextAsync(Path.Combine(source, "README.md"), "Initial");
+        await runner.RunGit(source, "add .");
+        await runner.RunGit(source, "-c commit.gpgsign=false commit -m Initial");
+        await workspace.Clone(cache, null, source, CloneMode.Full);
+
+        await runner.RunGit(source, "checkout -b feature");
+        await File.WriteAllTextAsync(Path.Combine(source, "README.md"), "Feature");
+        await runner.RunGit(source, "add .");
+        await runner.RunGit(source, "-c commit.gpgsign=false commit -m Feature");
+        await runner.RunGit(source, "-c tag.gpgsign=false tag v1");
+
+        var uploadPack = Path.Combine(_tempPath!, "authenticated-upload-pack.sh");
+        await File.WriteAllTextAsync(uploadPack,
+            "#!/bin/sh\n[ \"$GITRUNNER_TEST_CREDENTIAL\" = test-source-token ] || exit 1\nexec git-upload-pack \"$@\"\n");
+        File.SetUnixFileMode(uploadPack, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await runner.RunGit(cache, $"config remote.origin.uploadpack \"{uploadPack}\"");
+        await Assert.ThrowsExactlyAsync<GitCommandException>(() => workspace.Fetch(cache, TimeSpan.FromSeconds(3)));
+
+        var environment = new Dictionary<string, string?>
+        {
+            ["GITRUNNER_TEST_CREDENTIAL"] = "test-source-token",
+            ["GIT_CONFIG_COUNT"] = "1",
+            ["GIT_CONFIG_KEY_0"] = "credential.helper",
+            ["GIT_CONFIG_VALUE_0"] = string.Empty
+        };
+        await workspace.EnsureAllLocalBranchesUpToDateWithRemote(cache, "origin", environment);
+
+        await runner.RunGit(target, "init --bare");
+        var receiveHook = Path.Combine(target, "hooks", "pre-receive");
+        await File.WriteAllTextAsync(receiveHook,
+            "#!/bin/sh\n[ -z \"$GITRUNNER_TEST_CREDENTIAL\" ] || exit 1\n");
+        File.SetUnixFileMode(receiveHook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await workspace.AddOrSetRemoteUrl(cache, "target", target);
+        await workspace.PushAllBranchesAndTags(cache, "target", force: true);
+
+        var expected = await runner.RunGit(source, "show-ref --heads --tags");
+        var actual = await runner.RunGit(target, "show-ref --heads --tags");
+        Assert.AreEqual(expected, actual);
+        Assert.Contains("refs/heads/feature", actual);
+        Assert.Contains("refs/tags/v1", actual);
+        Assert.IsFalse(environment.ContainsKey("AIURSOFT_GITRUNNER_SAFE_DIRECTORY"));
+        Assert.IsNull(Environment.GetEnvironmentVariable("GITRUNNER_TEST_CREDENTIAL"));
+        var config = await File.ReadAllTextAsync(Path.Combine(cache, ".git", "config"));
+        Assert.DoesNotContain("test-source-token", config);
+    }
+
+    [TestMethod]
     public void FetchKeepsBinaryCompatibleOverloads()
     {
         Assert.IsNotNull(typeof(WorkspaceManager).GetMethod(nameof(WorkspaceManager.Fetch), [typeof(string)]));

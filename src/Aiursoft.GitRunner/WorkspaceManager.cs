@@ -365,11 +365,16 @@ public class WorkspaceManager(
     /// <returns>A task representing the asynchronous fetch operation.</returns>
     public Task Fetch(string path, TimeSpan? timeout)
     {
+        return Fetch(path, timeout, null);
+    }
+
+    public Task Fetch(string path, TimeSpan? timeout, IDictionary<string, string?>? environmentVariables)
+    {
         return retryEngine.RunWithRetry(
             attempt => gitCommandRunner.RunGit(
                 path,
                 "fetch --verbose",
-                timeout ?? TimeSpan.FromSeconds(attempt * 50)));
+                timeout ?? TimeSpan.FromSeconds(attempt * 50), true, environmentVariables));
     }
 
     /// <summary>
@@ -379,10 +384,15 @@ public class WorkspaceManager(
     /// <param name="path">The path of the Git repository.</param>
     /// <param name="remote">The name of the remote (default is "origin").</param>
     /// <returns>An array of branch names from the remote.</returns>
-    public async Task<string[]> ListRemoteBranches(string path, string remote = "origin")
+    public Task<string[]> ListRemoteBranches(string path, string remote = "origin")
     {
-        await Fetch(path);
-        var remoteOutput = await gitCommandRunner.RunGit(path, "branch -r");
+        return ListRemoteBranches(path, remote, null);
+    }
+
+    public async Task<string[]> ListRemoteBranches(string path, string remote, IDictionary<string, string?>? environmentVariables)
+    {
+        await Fetch(path, null, environmentVariables);
+        var remoteOutput = await gitCommandRunner.RunGit(path, "branch -r", null, true, environmentVariables);
         return remoteOutput
             .Split('\n')
             .Select(line => line.Trim())
@@ -396,9 +406,14 @@ public class WorkspaceManager(
     /// </summary>
     /// <param name="path">The path of the Git repository.</param>
     /// <returns>An array of local branch names.</returns>
-    public async Task<string[]> GetAllLocalBranches(string path)
+    public Task<string[]> GetAllLocalBranches(string path)
     {
-        var localOutput = await gitCommandRunner.RunGit(path, "branch --format=\"%(refname:short)\"");
+        return GetAllLocalBranches(path, null);
+    }
+
+    public async Task<string[]> GetAllLocalBranches(string path, IDictionary<string, string?>? environmentVariables)
+    {
+        var localOutput = await gitCommandRunner.RunGit(path, "branch --format=\"%(refname:short)\"", null, true, environmentVariables);
         return localOutput
             .Split('\n')
             .Select(line => line.Trim(' ', '"'))
@@ -413,11 +428,16 @@ public class WorkspaceManager(
     /// <param name="branchName">The name of the branch to delete.</param>
     /// <param name="force">Whether to force delete the branch (using -D).</param>
     /// <returns>A task representing the asynchronous delete operation.</returns>
-    public async Task DeleteLocalBranch(string path, string branchName, bool force = false)
+    public Task DeleteLocalBranch(string path, string branchName, bool force = false)
+    {
+        return DeleteLocalBranch(path, branchName, force, null);
+    }
+
+    public async Task DeleteLocalBranch(string path, string branchName, bool force, IDictionary<string, string?>? environmentVariables)
     {
         var flag = force ? "-D" : "-d";
         logger.LogInformation("Deleting local branch {Branch} in {Path} with flag {Flag}.", branchName, path, flag);
-        await gitCommandRunner.RunGit(path, $"branch {flag} {branchName}");
+        await gitCommandRunner.RunGit(path, $"branch {flag} {branchName}", null, true, environmentVariables);
     }
 
     /// <summary>
@@ -426,10 +446,15 @@ public class WorkspaceManager(
     /// <param name="path">The path of the Git repository.</param>
     /// <param name="remote">The name of the remote (default is "origin").</param>
     /// <returns>A task representing the asynchronous deletion operation.</returns>
-    public async Task DeleteLocalBranchesNotInRemote(string path, string remote = "origin")
+    public Task DeleteLocalBranchesNotInRemote(string path, string remote = "origin")
     {
-        var remoteBranches = await ListRemoteBranches(path, remote);
-        var localBranches = (await GetAllLocalBranches(path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return DeleteLocalBranchesNotInRemote(path, remote, null);
+    }
+
+    public async Task DeleteLocalBranchesNotInRemote(string path, string remote, IDictionary<string, string?>? environmentVariables)
+    {
+        var remoteBranches = await ListRemoteBranches(path, remote, environmentVariables);
+        var localBranches = (await GetAllLocalBranches(path, environmentVariables)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var branch in localBranches)
         {
@@ -439,7 +464,7 @@ public class WorkspaceManager(
                     branch, path);
                 try
                 {
-                    await DeleteLocalBranch(path, branch, true);
+                    await DeleteLocalBranch(path, branch, true, environmentVariables);
                 }
                 catch (GitCommandException ex)
                 {
@@ -450,10 +475,15 @@ public class WorkspaceManager(
         }
     }
 
-    public async Task CreateLocalBranchFromRemote(string path, string remote = "origin")
+    public Task CreateLocalBranchFromRemote(string path, string remote = "origin")
     {
-        var remoteBranches = await ListRemoteBranches(path, remote);
-        var localBranches = (await GetAllLocalBranches(path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return CreateLocalBranchFromRemote(path, remote, null);
+    }
+
+    public async Task CreateLocalBranchFromRemote(string path, string remote, IDictionary<string, string?>? environmentVariables)
+    {
+        var remoteBranches = await ListRemoteBranches(path, remote, environmentVariables);
+        var localBranches = (await GetAllLocalBranches(path, environmentVariables)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var branch in remoteBranches)
         {
             if (!localBranches.Contains(branch))
@@ -462,10 +492,10 @@ public class WorkspaceManager(
                     branch, path);
                 try
                 {
-                    await gitCommandRunner.RunGit(path, $"checkout -b {branch}");
-                    await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}");
+                    await gitCommandRunner.RunGit(path, $"checkout -b {branch}", null, true, environmentVariables);
+                    await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}", null, true, environmentVariables);
                     // Set the upstream branch to the remote branch
-                    await gitCommandRunner.RunGit(path, $"branch --set-upstream-to={remote}/{branch} {branch}");
+                    await gitCommandRunner.RunGit(path, $"branch --set-upstream-to={remote}/{branch} {branch}", null, true, environmentVariables);
                 }
                 catch (GitCommandException ex)
                 {
@@ -482,18 +512,23 @@ public class WorkspaceManager(
     /// <param name="path">The path of the Git repository.</param>
     /// <param name="remote">The name of the remote (default is "origin").</param>
     /// <returns>A task representing the asynchronous mirroring operation.</returns>
-    public async Task EnsureAllLocalBranchesUpToDateWithRemote(string path, string remote = "origin")
+    public Task EnsureAllLocalBranchesUpToDateWithRemote(string path, string remote = "origin")
     {
-        await DeleteLocalBranchesNotInRemote(path, remote);
-        await CreateLocalBranchFromRemote(path, remote);
+        return EnsureAllLocalBranchesUpToDateWithRemote(path, remote, null);
+    }
 
-        var localBranches = await GetAllLocalBranches(path);
+    public async Task EnsureAllLocalBranchesUpToDateWithRemote(string path, string remote, IDictionary<string, string?>? environmentVariables)
+    {
+        await DeleteLocalBranchesNotInRemote(path, remote, environmentVariables);
+        await CreateLocalBranchFromRemote(path, remote, environmentVariables);
+
+        var localBranches = await GetAllLocalBranches(path, environmentVariables);
         foreach (var branch in localBranches)
         {
             try
             {
-                await gitCommandRunner.RunGit(path, $"checkout {branch}");
-                await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}");
+                await gitCommandRunner.RunGit(path, $"checkout {branch}", null, true, environmentVariables);
+                await gitCommandRunner.RunGit(path, $"reset --hard {remote}/{branch}", null, true, environmentVariables);
                 // We don't have to run `git pull` here because we already fetched the remote branches.
             }
             catch (GitCommandException ex)
