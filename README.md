@@ -1,6 +1,6 @@
 # GitRunner
 
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/blob/master/LICENSE)
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/AiursoftWeb/gitrunner/blob/master/LICENSE)
 [![Pipeline stat](https://gitlab.aiursoft.com/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/pipelines)
 [![Test Coverage](https://gitlab.aiursoft.com/aiursoft/gitrunner/badges/master/coverage.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/pipelines)
 [![NuGet version (Aiursoft.GitRunner)](https://img.shields.io/nuget/v/Aiursoft.gitrunner.svg)](https://www.nuget.org/packages/Aiursoft.gitrunner/)
@@ -32,11 +32,11 @@ var workspaceManager = serviceProvider.GetRequiredService<WorkspaceManager>();
 await workspaceManager.Clone(
     repoPath, 
     "master", 
-    "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+    "https://github.com/AiursoftWeb/gitrunner.git",
     mode);
 
 var branch = await workspaceManager.GetBranch(repoPath); // master
-var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://gitlab.aiursoft.com/aiursoft/gitrunner.git
+var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://github.com/AiursoftWeb/gitrunner.git
 ```
 
 ## API Overview
