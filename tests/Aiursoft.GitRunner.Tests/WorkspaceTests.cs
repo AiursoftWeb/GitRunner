@@ -48,7 +48,7 @@ public class WorkspaceTests
         await workspaceManager.Clone(
             _tempPath!,
             "master",
-            "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+            "https://github.com/AiursoftWeb/gitrunner.git",
             mode);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
@@ -60,7 +60,7 @@ public class WorkspaceTests
         await workspaceManager.Clone(
             _tempPath!,
             null,
-            "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+            "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
         var branch = await workspaceManager.GetBranch(_tempPath!);
@@ -71,7 +71,7 @@ public class WorkspaceTests
     public async Task TestReset()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
@@ -80,7 +80,7 @@ public class WorkspaceTests
     public async Task TestResetTwice()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/manhours.git",
             CloneMode.Depth1);
@@ -93,7 +93,7 @@ public class WorkspaceTests
     public async Task TestResetDefaultBranch()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
@@ -102,9 +102,9 @@ public class WorkspaceTests
     public async Task TestResetBareDefaultBranch()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.BareWithOnlyCommits);
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.BareWithOnlyCommits);
         Assert.IsTrue(Directory.Exists(_tempPath));
     }
@@ -113,7 +113,7 @@ public class WorkspaceTests
     public async Task TestGetBranch()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         var branch = await workspaceManager.GetBranch(_tempPath!);
         Assert.AreEqual("master", branch);
@@ -123,17 +123,17 @@ public class WorkspaceTests
     public async Task TestGetRemoteUrl()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         var remote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
-        Assert.AreEqual("https://gitlab.aiursoft.com/aiursoft/gitrunner.git", remote);
+        Assert.AreEqual("https://github.com/AiursoftWeb/gitrunner.git", remote);
     }
 
     [TestMethod]
     public async Task TestGetCommitTimes()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.OnlyCommits);
         var commits = await workspaceManager.GetCommitTimes(_tempPath!);
         Assert.IsGreaterThan(8, commits.Length);
@@ -166,10 +166,10 @@ public class WorkspaceTests
     public async Task TestGetRemoteUrlWithOnlyCommits()
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
-        await workspaceManager.ResetRepo(_tempPath!, "master", "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, "master", "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.OnlyCommits);
         var remote = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
-        Assert.AreEqual("https://gitlab.aiursoft.com/aiursoft/gitrunner.git", remote);
+        Assert.AreEqual("https://github.com/AiursoftWeb/gitrunner.git", remote);
     }
 
     [TestMethod]
@@ -177,14 +177,14 @@ public class WorkspaceTests
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         var commandService = _serviceProvider!.GetRequiredService<GitRunner.Services.GitCommandRunner>();
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
         try
         {
             await commandService.RunGit(_tempPath!, "remote remove origin");
-            await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+            await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
                 CloneMode.Depth1);
             Assert.Fail("After removing the remote, we should not be able to reset the repo.");
         }
@@ -421,7 +421,7 @@ public class WorkspaceTests
     {
         var workspaceManager = _serviceProvider!.GetRequiredService<WorkspaceManager>();
         Assert.IsNotNull(_tempPath);
-        await workspaceManager.ResetRepo(_tempPath!, null, "https://gitlab.aiursoft.com/aiursoft/gitrunner.git",
+        await workspaceManager.ResetRepo(_tempPath!, null, "https://github.com/AiursoftWeb/gitrunner.git",
             CloneMode.Depth1);
         Assert.IsTrue(Directory.Exists(_tempPath));
 
@@ -514,7 +514,7 @@ public class WorkspaceTests
         await workspaceManager.AddOrSetRemoteUrl(
             path: _tempPath!,
             remoteName: "origin",
-            remoteUrl: "https://gitlab.aiursoft.com/anduin/anduinos.git");
+            remoteUrl: "https://github.com/Anduin2017/AnduinOS.git");
         await workspaceManager.EnsureAllLocalBranchesUpToDateWithRemote(
             path: _tempPath!,
             remote: "origin");
@@ -536,14 +536,14 @@ public class WorkspaceTests
         Assert.IsEmpty(remotes);
 
         // Add a remote.
-        await workspaceManager.AddRemote(_tempPath!, "origin", "https://gitlab.aiursoft.com/anduin/anduinos.git");
+        await workspaceManager.AddRemote(_tempPath!, "origin", "https://github.com/Anduin2017/AnduinOS.git");
         remotes = await workspaceManager.GetRemoteNames(_tempPath!);
         Assert.HasCount(1, remotes);
 
         // Change the remote URL.
-        await workspaceManager.SetRemoteUrl(_tempPath!, "origin", "https://gitlab.aiursoft.com/anduin/anduinos.git");
+        await workspaceManager.SetRemoteUrl(_tempPath!, "origin", "https://github.com/Anduin2017/AnduinOS.git");
         var newUrl = await workspaceManager.GetRemoteUrl(_tempPath!, "origin");
-        Assert.AreEqual("https://gitlab.aiursoft.com/anduin/anduinos.git", newUrl);
+        Assert.AreEqual("https://github.com/Anduin2017/AnduinOS.git", newUrl);
 
         // Remove the remote.
         await workspaceManager.DeleteRemote(_tempPath!, "origin");
