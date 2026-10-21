@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Text.RegularExpressions;
 using Aiursoft.GitRunner.Exceptions;
 using Aiursoft.Scanner.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -52,7 +51,7 @@ public class GitCommandRunner : ITransientDependency
         string error;
         try
         {
-            _logger.LogTrace("Running git command {Command} at {Path}", RedactUrlCredentials(arguments), path);
+            _logger.LogTrace("Running git command {Command} at {Path}", GitDiagnostics.Redact(arguments), path);
             (var exitCode, output, error) = await _commandService.RunCommandAsync(
                 bin: "git", 
                 arg:commandArguments,
@@ -77,12 +76,17 @@ public class GitCommandRunner : ITransientDependency
             if (exitCode != 0)
             {
                 throw new GitCommandException(
-                    $"Git command resulted an error: git {RedactUrlCredentials(arguments)} on {path} got output: {RedactUrlCredentials(output)}, error: {RedactUrlCredentials(error)}",
-                    RedactUrlCredentials(arguments),
-                    RedactUrlCredentials(output),
-                    RedactUrlCredentials(error),
+                    $"Git command resulted an error: git {arguments} on {path} got output: {output}, error: {error}",
+                    arguments,
+                    output,
+                    error,
                     path);
             }
+        }
+        catch (TimeoutException exception)
+        {
+            // The process runner includes arguments in timeout messages; do not retain a raw inner exception.
+            throw new TimeoutException(GitDiagnostics.Redact(exception.Message));
         }
         catch (Win32Exception)
         {
@@ -96,12 +100,7 @@ public class GitCommandRunner : ITransientDependency
 
         var finalOutput = output + error;
         _logger.LogTrace("Console command {Command} provided following success output {Output}",
-            RedactUrlCredentials(arguments), RedactUrlCredentials(finalOutput));
+            GitDiagnostics.Redact(arguments), GitDiagnostics.Redact(finalOutput));
         return finalOutput;
-    }
-    private static string RedactUrlCredentials(string value)
-    {
-        // Legacy working copies may still have credentials embedded in their remotes.
-        return Regex.Replace(value, @"(https?://)[^\s/@]+@", "$1[REDACTED]@", RegexOptions.IgnoreCase);
     }
 }

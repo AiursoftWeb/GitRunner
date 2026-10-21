@@ -345,7 +345,7 @@ public class WorkspaceManager(
             var forceString = force ? "--force" : string.Empty;
 
             var command = $@"push --set-upstream ninja {branch} {forceString}";
-            logger.LogInformation("Running git {Command}", command);
+            logger.LogInformation("Running git {Command}", GitDiagnostics.Redact(command));
             await gitCommandRunner.RunGit(sourcePath, command);
         }
         catch (GitCommandException e) when (e.GitError.Contains("rejected]"))
@@ -356,7 +356,7 @@ public class WorkspaceManager(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Git push failed to {SourcePath}, branch {Branch}, endpoint {Endpoint}", sourcePath,
-                branch, endpoint);
+                branch, GitDiagnostics.Redact(endpoint));
             throw;
         }
     }
@@ -600,7 +600,7 @@ public class WorkspaceManager(
             if (string.Equals(currentRemoteUrl, remoteUrl, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogInformation("Remote {RemoteName} already exists with URL {RemoteUrl} in {Path}, skipping.",
-                    remoteName, remoteUrl, path);
+                    remoteName, GitDiagnostics.Redact(remoteUrl), path);
                 return;
             }
 
@@ -625,7 +625,7 @@ public class WorkspaceManager(
                 path);
         }
 
-        logger.LogInformation("Adding remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, remoteUrl, path);
+        logger.LogInformation("Adding remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, GitDiagnostics.Redact(remoteUrl), path);
         await gitCommandRunner.RunGit(path, $"remote add {remoteName} {remoteUrl}");
     }
 
@@ -672,7 +672,7 @@ public class WorkspaceManager(
                 path);
         }
 
-        logger.LogInformation("Setting remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, remoteUrl, path);
+        logger.LogInformation("Setting remote {RemoteName} with URL {RemoteUrl} in {Path}.", remoteName, GitDiagnostics.Redact(remoteUrl), path);
         await gitCommandRunner.RunGit(path, $"remote set-url {remoteName} {remoteUrl}");
     }
 }
