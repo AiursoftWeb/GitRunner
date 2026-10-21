@@ -20,12 +20,12 @@ public class GitCommandException : Exception
         string output,
         string error,
         string path)
-        : base(message)
+        : base(GitDiagnostics.Redact(message))
     {
-        Command = command;
-        GitOutput = output;
-        GitError = error;
-        Path = path;
+        Command = GitDiagnostics.Redact(command);
+        GitOutput = GitDiagnostics.Redact(output);
+        GitError = GitDiagnostics.Redact(error);
+        Path = GitDiagnostics.Redact(path);
     }
 
     /// <summary>

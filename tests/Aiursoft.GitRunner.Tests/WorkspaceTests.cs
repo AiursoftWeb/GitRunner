@@ -1,4 +1,6 @@
 ﻿using System.Text;
+using System.ComponentModel;
+using Aiursoft.CSTools.Services;
 using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Exceptions;
@@ -396,6 +398,124 @@ public class WorkspaceTests
         }
     }
 
+    [TestMethod]
+    [DataRow("https://bot:credential-sentinel@mirror.example.test/repository.git")]
+    [DataRow("https://credential-sentinel@mirror.example.test/repository.git")]
+    [DataRow("HTTPS://bot:credential%2Dsentinel@mirror.example.test/repository.git")]
+    [DataRow("ssh://bot:credential-sentinel@mirror.example.test/repository.git")]
+    public async Task RemoteDiagnosticsRedactCredentialsWithoutChangingStoredUrls(string remoteUrl)
+    {
+        var logs = new CredentialLogCapture();
+        using var services = new ServiceCollection()
+            .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs))
+            .AddGitRunner().BuildServiceProvider();
+        var runner = services.GetRequiredService<GitRunner.Services.GitCommandRunner>();
+        var workspace = services.GetRequiredService<WorkspaceManager>();
+        await runner.RunGit(_tempPath!, "init");
+        await workspace.AddRemote(_tempPath!, "target", remoteUrl);
+        Assert.AreEqual(remoteUrl, await workspace.GetRemoteUrl(_tempPath!, "target"));
+        var updatedUrl = remoteUrl.Replace("repository.git", "updated.git");
+        await workspace.SetRemoteUrl(_tempPath!, "target", updatedUrl);
+        await workspace.AddOrSetRemoteUrl(_tempPath!, "target", updatedUrl);
+        Assert.AreEqual(updatedUrl, await workspace.GetRemoteUrl(_tempPath!, "target"));
+        Assert.IsTrue(logs.Messages.Any(message => message.Contains("mirror.example.test/updated.git")));
+        Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel") || message.Contains("credential%2Dsentinel")),
+            "Rendered logs, structured fields and exceptions must not expose remote credentials.");
+    }
+
+    [TestMethod]
+    [DataRow("failure")]
+    [DataRow("lfs")]
+    [DataRow("missing")]
+    [DataRow("timeout")]
+    public async Task CommandFailuresRedactCredentialsInAllDiagnostics(string failure)
+    {
+        const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
+        var command = new DiagnosticCommandService(failure, remoteUrl);
+        var logs = new CredentialLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
+        var runner = new GitRunner.Services.GitCommandRunner(command, loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
+        Exception? caught = null;
+        try
+        {
+            await runner.RunGit(_tempPath!, "fetch " + remoteUrl, setSafeDirectoryFirst: false);
+        }
+        catch (Exception exception)
+        {
+            caught = exception;
+        }
+        Assert.IsNotNull(caught);
+        Assert.AreEqual("fetch " + remoteUrl, command.Arguments, "Execution must receive the original arguments.");
+        Assert.DoesNotContain("credential-sentinel", caught.ToString());
+        if (failure == "timeout")
+            Assert.IsInstanceOfType<TimeoutException>(caught);
+        else
+        {
+            Assert.IsInstanceOfType<GitCommandException>(caught);
+            var gitException = (GitCommandException)caught;
+            foreach (var field in new[] { gitException.Command, gitException.GitOutput, gitException.GitError, gitException.Path })
+                Assert.DoesNotContain("credential-sentinel", field);
+        }
+        Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel")));
+    }
+
+    [TestMethod]
+    public async Task SuccessfulCommandReturnsOriginalOutputButRedactsItsLog()
+    {
+        const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
+        var logs = new CredentialLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
+        var runner = new GitRunner.Services.GitCommandRunner(new DiagnosticCommandService("success", remoteUrl), loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
+        Assert.AreEqual(remoteUrl + remoteUrl,
+            await runner.RunGit(_tempPath!, "remote get-url target", setSafeDirectoryFirst: false));
+        Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel")));
+    }
+
+    [TestMethod]
+    public async Task FailedPushRedactsItsEndpointAndException()
+    {
+        const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
+        var logs = new CredentialLogCapture();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
+        var runner = new GitRunner.Services.GitCommandRunner(new DiagnosticCommandService("push", remoteUrl), loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
+        var workspace = new WorkspaceManager(loggerFactory.CreateLogger<WorkspaceManager>(),
+            _serviceProvider!.GetRequiredService<RetryEngine>(), runner);
+        var exception = await Assert.ThrowsExactlyAsync<GitCommandException>(() => workspace.Push(_tempPath!, "master", remoteUrl));
+        Assert.DoesNotContain("credential-sentinel", exception.ToString());
+        Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel")));
+        Assert.IsTrue(logs.Messages.Any(message => message.Contains("Git push failed")));
+    }
+
+    [TestMethod]
+    public void GitExceptionsRedactEveryExposedDiagnosticField()
+    {
+        const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
+        var exception = new GitCommandException(remoteUrl, remoteUrl, remoteUrl, remoteUrl, remoteUrl);
+        foreach (var field in new[] { exception.ToString(), exception.Command, exception.GitOutput, exception.GitError, exception.Path })
+        {
+            Assert.DoesNotContain("credential-sentinel", field);
+            Assert.Contains("mirror.example.test/repository.git", field);
+        }
+    }
+
+    private sealed class DiagnosticCommandService(string failure, string remoteUrl) : CommandService
+    {
+        public string? Arguments { get; private set; }
+        public override Task<(int code, string output, string error)> RunCommandAsync(string bin, string arg, string path,
+            TimeSpan? timeout = null, bool killTimeoutProcess = true, IDictionary<string, string?>? environmentVariables = null)
+        {
+            Arguments = arg;
+            if (failure == "push" && arg.Contains("remote set-url"))
+                return Task.FromResult((0, string.Empty, string.Empty));
+            if (failure == "timeout")
+                throw new TimeoutException("Execute command: git " + arg + " timed out.", new Exception(remoteUrl));
+            if (failure == "missing")
+                throw new Win32Exception("git was not found");
+            return Task.FromResult((failure == "success" ? 0 : 1,
+                failure == "lfs" ? "'git-lfs' was not found " + remoteUrl : remoteUrl, remoteUrl));
+        }
+    }
+
     private sealed class CredentialLogCapture : ILoggerProvider, ILogger
     {
         public List<string> Messages { get; } = [];
@@ -404,7 +524,14 @@ public class WorkspaceTests
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public void Dispose() { }
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+            if (state is IEnumerable<KeyValuePair<string, object?>> fields)
+                Messages.AddRange(fields.Select(field => field.Value?.ToString() ?? string.Empty));
+            if (exception != null)
+                Messages.Add(exception.ToString());
+        }
     }
 
     [TestMethod]
