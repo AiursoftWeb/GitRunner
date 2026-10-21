@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using System.ComponentModel;
 using Aiursoft.CSTools.Services;
-using Aiursoft.GitRunner.Services;
 using Aiursoft.CSTools.Tools;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Exceptions;
@@ -410,7 +409,7 @@ public class WorkspaceTests
         using var services = new ServiceCollection()
             .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs))
             .AddGitRunner().BuildServiceProvider();
-        var runner = services.GetRequiredService<GitCommandRunner>();
+        var runner = services.GetRequiredService<GitRunner.Services.GitCommandRunner>();
         var workspace = services.GetRequiredService<WorkspaceManager>();
         await runner.RunGit(_tempPath!, "init");
         await workspace.AddRemote(_tempPath!, "target", remoteUrl);
@@ -435,7 +434,7 @@ public class WorkspaceTests
         var command = new DiagnosticCommandService(failure, remoteUrl);
         var logs = new CredentialLogCapture();
         using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
-        var runner = new GitCommandRunner(command, loggerFactory.CreateLogger<GitCommandRunner>());
+        var runner = new GitRunner.Services.GitCommandRunner(command, loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
         Exception? caught = null;
         try
         {
@@ -466,7 +465,7 @@ public class WorkspaceTests
         const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
         var logs = new CredentialLogCapture();
         using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
-        var runner = new GitCommandRunner(new DiagnosticCommandService("success", remoteUrl), loggerFactory.CreateLogger<GitCommandRunner>());
+        var runner = new GitRunner.Services.GitCommandRunner(new DiagnosticCommandService("success", remoteUrl), loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
         Assert.AreEqual(remoteUrl + remoteUrl,
             await runner.RunGit(_tempPath!, "remote get-url target", setSafeDirectoryFirst: false));
         Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel")));
@@ -478,9 +477,9 @@ public class WorkspaceTests
         const string remoteUrl = "https://bot:credential-sentinel@mirror.example.test/repository.git";
         var logs = new CredentialLogCapture();
         using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
-        var runner = new GitCommandRunner(new DiagnosticCommandService("push", remoteUrl), loggerFactory.CreateLogger<GitCommandRunner>());
+        var runner = new GitRunner.Services.GitCommandRunner(new DiagnosticCommandService("push", remoteUrl), loggerFactory.CreateLogger<GitRunner.Services.GitCommandRunner>());
         var workspace = new WorkspaceManager(loggerFactory.CreateLogger<WorkspaceManager>(),
-            _serviceProvider!.GetRequiredService<Aiursoft.Canon.RetryEngine>(), runner);
+            _serviceProvider!.GetRequiredService<RetryEngine>(), runner);
         var exception = await Assert.ThrowsExactlyAsync<GitCommandException>(() => workspace.Push(_tempPath!, "master", remoteUrl));
         Assert.DoesNotContain("credential-sentinel", exception.ToString());
         Assert.IsFalse(logs.Messages.Any(message => message.Contains("credential-sentinel")));
