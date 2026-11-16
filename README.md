@@ -1,4 +1,6 @@
-# GitRunner
+# Aiursoft GitRunner
+
+<a name="gitrunner"></a>
 
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/AiursoftWeb/gitrunner/blob/master/LICENSE)
 [![Pipeline stat](https://badge-proxy.aiursoft.com/aiursoft/gitrunner/badges/master/pipeline.svg)](https://gitlab.aiursoft.com/aiursoft/gitrunner/-/pipelines)
@@ -9,7 +11,17 @@
 
 GitRunner is a tool to help you run git commands in C#.
 
-## How to install
+## Overview
+
+### What is GitRunner?
+
+Run Git repository operations from typed .NET services, including clone, commits, branches and remote operations.
+
+## Installation
+
+Add the package to your .NET project:
+
+<a name="how-to-install"></a>
 
 To install `Aiursoft.GitRunner` to your project from [nuget.org](https://www.nuget.org/packages/Aiursoft.GitRunner/):
 
@@ -17,12 +29,28 @@ To install `Aiursoft.GitRunner` to your project from [nuget.org](https://www.nug
 dotnet add package Aiursoft.GitRunner
 ```
 
-## How to use
+**Standalone console example**
+
+The console example also uses the standard Microsoft service registrations:
+
+```bash
+dotnet add package Microsoft.Extensions.Logging
+```
+
+Requires .NET 10 or later.
+
+## Usage
+
+<a name="how-to-use"></a>
 
 You can use this tool to Clone\Push\Commit git repositories.
 
 ```csharp
-var serviceProvider = new ServiceCollection()
+using Aiursoft.GitRunner;
+using Aiursoft.GitRunner.Models;
+using Microsoft.Extensions.DependencyInjection;
+
+using var serviceProvider = new ServiceCollection()
     .AddLogging()
     .AddGitRunner()
     .BuildServiceProvider();
@@ -31,16 +59,18 @@ Directory.CreateDirectory(repoPath);
 
 var workspaceManager = serviceProvider.GetRequiredService<WorkspaceManager>();
 await workspaceManager.Clone(
-    repoPath, 
-    "master", 
+    repoPath,
+    "master",
     "https://github.com/AiursoftWeb/gitrunner.git",
-    mode);
+    CloneMode.Full);
 
 var branch = await workspaceManager.GetBranch(repoPath); // master
-var remote = await workspaceManager.GetRemoteUrl(repoPath); // https://github.com/AiursoftWeb/gitrunner.git
+var remote = await workspaceManager.GetRemoteUrl(repoPath, "origin"); // https://github.com/AiursoftWeb/gitrunner.git
 ```
 
-## API Overview
+### API Overview
+
+<a name="api-overview"></a>
 
 Below is a brief summary of all the methods available in **WorkspaceManager**:
 
@@ -60,9 +90,9 @@ Below is a brief summary of all the methods available in **WorkspaceManager**:
     - Switches the repository to the specified branch. If needed, it can enforce a fresh branch creation.
     - *Usage:* `await workspaceManager.SwitchToBranch(sourcePath, "develop", true);`
 
-- **GetRemoteUrl(string path)**
+- **GetRemoteUrl(string path, string remoteName)**
     - Retrieves the remote origin URL from the Git configuration.
-    - *Usage:* `var remoteUrl = await workspaceManager.GetRemoteUrl(path);`
+    - *Usage:* `var remoteUrl = await workspaceManager.GetRemoteUrl(path, "origin");`
 
 - **Init(string path)**
     - Initializes a new Git repository at the given path (`git init`).
@@ -114,15 +144,43 @@ Below is a brief summary of all the methods available in **WorkspaceManager**:
     - Fetches updates from the remote with a built-in retry mechanism.
     - *Usage:* `await workspaceManager.Fetch(path);`
 
-## Error Handling & Retry
+### Error Handling & Retry
+
+<a name="error-handling--retry"></a>
 
 - **GitCommandException**: Methods throw this exception on Git command errors.
 - **RetryEngine**: Used (e.g., in the `Fetch` method) to automatically retry operations on failure.
 
+## Configuration
+
+**Runtime and registration**
+
+Install Git and make the `git` executable available on the process PATH. `AddGitRunner()` registers the workspace manager and command/retry services; add logging before resolving them. Supply the repository path, branch, endpoint and `CloneMode` to operations. Remote access uses the environment's Git authentication configuration; this package does not require an application-specific configuration file. Error behavior and retry semantics are retained in Usage.
+
+## Development
+
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+From the repository root, restore, build and test:
+
+```bash
+dotnet restore Aiursoft.GitRunner.sln
+dotnet build Aiursoft.GitRunner.sln --no-restore
+dotnet test Aiursoft.GitRunner.sln --no-restore
+```
+
+Run `./lint.sh` for the existing static checks.
+
 ## How to contribute
+
+<a name="how-to-contribute"></a>
 
 There are many ways to contribute to the project: logging bugs, submitting pull requests, reporting issues, and creating suggestions.
 
-Even if you with push rights on the repository, you should create a personal fork and create feature branches there when you need them. This keeps the main repository clean and your workflow cruft out of sight.
+Even if you have push rights on the repository, you should create a personal fork and create feature branches there when you need them. This keeps the main repository clean and your workflow cruft out of sight.
 
 We're also interested in your feedback on the future of this project. You can submit a suggestion or feature request through the issue tracker. To make this process more effective, we're asking that these include more information to help define them more clearly.
+
+## License
+
+Licensed under the [MIT License](https://github.com/AiursoftWeb/gitrunner/blob/master/LICENSE).
